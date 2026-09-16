@@ -754,7 +754,7 @@ class MemberContributorRegisterSerializer(
         # Convert BPL yes/no -> Boolean
         # -------------------------------------------------
 
-        bpl_status = self.initial_data.get(
+        bpl_status = validated_data.pop(
             "bpl_status",
             "no",
         )
