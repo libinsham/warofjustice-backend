@@ -169,7 +169,6 @@ class SubscriberApplicationSerializer(
         fields = [
             "application_id",
             "channels_confirmed",
-            "status",
             "created_at",
         ]
 
@@ -227,7 +226,6 @@ class AdminSubscriberApplicationSerializer(
             "website",
             "channels_confirmed",
             "declaration_confirmed",
-            "status",
             "created_at",
         ]
         read_only_fields = fields
