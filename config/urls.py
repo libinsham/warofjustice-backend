@@ -1,3 +1,5 @@
+from django.conf import settings
+from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
 from drf_spectacular.views import (
@@ -52,6 +54,12 @@ urlpatterns = [
     # PUBLIC APIs
     # Website + future Flutter app
     # =====================================================
+
+    # E-Magazine APIs
+    path(
+        "api/v1/emagazines/",
+        include("apps.emagazine.urls"),
+    ),
 
     path(
         "api/v1/",
@@ -158,3 +166,14 @@ urlpatterns = [
         name="swagger-ui",
     ),
 ]
+
+
+# =========================================================
+# LOCAL DEVELOPMENT MEDIA FILES
+# =========================================================
+
+if settings.DEBUG:
+    urlpatterns += static(
+        settings.MEDIA_URL,
+        document_root=settings.MEDIA_ROOT,
+    )

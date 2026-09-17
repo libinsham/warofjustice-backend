@@ -54,6 +54,8 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+"apps.emagazine",
+
 
     # Third-party
     "rest_framework",
