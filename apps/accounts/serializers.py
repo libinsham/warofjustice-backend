@@ -175,6 +175,65 @@ class SubscriberApplicationSerializer(
 
 
 # =========================================================
+# SUBSCRIBER APPLICATION
+# ADMIN / READ SERIALIZER
+# =========================================================
+
+class AdminSubscriberApplicationSerializer(
+    serializers.ModelSerializer
+):
+    """
+    Read serializer used by the Admin Subscriber section.
+
+    Exposes subscriber application information together with
+    the applicant's account/profile information.
+    """
+
+    name = serializers.CharField(
+        source="user.profile.full_name",
+        read_only=True,
+    )
+
+    email = serializers.EmailField(
+        source="user.email",
+        read_only=True,
+    )
+
+    phone = serializers.CharField(
+        source="user.profile.phone_number",
+        read_only=True,
+    )
+
+    whatsapp_number = serializers.CharField(
+        source="user.profile.whatsapp_number",
+        read_only=True,
+    )
+
+    website = serializers.URLField(
+        source="user.profile.website",
+        read_only=True,
+        allow_blank=True,
+    )
+
+    class Meta:
+        model = SubscriberApplication
+        fields = [
+            "id",
+            "application_id",
+            "name",
+            "email",
+            "phone",
+            "whatsapp_number",
+            "website",
+            "channels_confirmed",
+            "declaration_confirmed",
+            "status",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+
+# =========================================================
 # MEMBER & CONTRIBUTOR
 # ADMIN / READ SERIALIZER
 # =========================================================

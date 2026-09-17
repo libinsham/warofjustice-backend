@@ -21,6 +21,7 @@ from .views import (
     MemberContributorRegisterView,
     RegisterAuthorView,
     RegisterReaderView,
+    SubscriberApplicationListView,
     SubscriberRegisterView,
 )
 
@@ -44,6 +45,17 @@ urlpatterns = [
         "register-subscriber/",
         SubscriberRegisterView.as_view(),
         name="register-subscriber",
+    ),
+
+    # =====================================================
+    # SUBSCRIBER APPLICATIONS
+    # ADMIN LIST
+    # =====================================================
+
+    path(
+        "subscriber-applications/",
+        SubscriberApplicationListView.as_view(),
+        name="subscriber-applications",
     ),
 
     # =====================================================

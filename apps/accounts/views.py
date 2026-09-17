@@ -13,10 +13,12 @@ from apps.core.models import AuditLog
 from .models import (
     MemberContributorApplication,
     Role,
+    SubscriberApplication,
     User,
 )
 
 from .serializers import (
+    AdminSubscriberApplicationSerializer,
     MemberContributorApplicationSerializer,
     MemberContributorRegisterSerializer,
     RegisterAuthorSerializer,
@@ -209,6 +211,86 @@ class MemberContributorRegisterView(APIView):
                 "application": application_data,
             },
             status=status.HTTP_201_CREATED,
+        )
+
+
+# =========================================================
+# SUBSCRIBER APPLICATIONS
+# ADMIN LIST
+# =========================================================
+
+class SubscriberApplicationListView(APIView):
+    """
+    Returns real Subscriber applications for the Admin dashboard.
+
+    GET:
+        /api/v1/auth/subscriber-applications/
+    """
+
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request):
+        # -----------------------------------------------------
+        # Check administrator access
+        # -----------------------------------------------------
+
+        role_name = getattr(
+            getattr(
+                request.user,
+                "role",
+                None,
+            ),
+            "name",
+            "",
+        )
+
+        allowed_roles = {
+            "admin",
+            "super_admin",
+            "editor",
+            "bureau_chief",
+        }
+
+        if role_name not in allowed_roles:
+            return Response(
+                {
+                    "detail": (
+                        "You do not have permission "
+                        "to view subscriber applications."
+                    )
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # -----------------------------------------------------
+        # Get applications
+        # -----------------------------------------------------
+
+        applications = (
+            SubscriberApplication.objects
+            .select_related(
+                "user",
+                "user__profile",
+            )
+            .all()
+            .order_by("-created_at")
+        )
+
+        # -----------------------------------------------------
+        # Serialize
+        # -----------------------------------------------------
+
+        serializer = AdminSubscriberApplicationSerializer(
+            applications,
+            many=True,
+            context={
+                "request": request,
+            },
+        )
+
+        return Response(
+            serializer.data,
+            status=status.HTTP_200_OK,
         )
 
 
