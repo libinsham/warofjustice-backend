@@ -184,8 +184,12 @@ class AdminSubscriberApplicationSerializer(
     """
     Read serializer used by the Admin Subscriber section.
 
-    Exposes subscriber application information together with
-    the applicant's account/profile information.
+    Subscriber registration is automatic, so the subscriber does
+    not have an approval status on SubscriberApplication.
+
+    The current account status is taken from User.status.
+    This keeps the API compatible with the frontend while making
+    ACTIVE the real subscriber account status.
     """
 
     name = serializers.CharField(
@@ -214,6 +218,13 @@ class AdminSubscriberApplicationSerializer(
         allow_blank=True,
     )
 
+    # SubscriberApplication no longer has its own status field.
+    # The real account status belongs to User.
+    status = serializers.CharField(
+        source="user.status",
+        read_only=True,
+    )
+
     class Meta:
         model = SubscriberApplication
         fields = [
@@ -226,6 +237,7 @@ class AdminSubscriberApplicationSerializer(
             "website",
             "channels_confirmed",
             "declaration_confirmed",
+            "status",
             "created_at",
         ]
         read_only_fields = fields
