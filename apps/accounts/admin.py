@@ -90,12 +90,7 @@ class SubscriberApplicationAdmin(admin.ModelAdmin):
     list_display = (
         "application_id",
         "user",
-        "status",
         "created_at",
-    )
-
-    list_filter = (
-        "status",
     )
 
     search_fields = (
