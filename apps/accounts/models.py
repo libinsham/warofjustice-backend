@@ -14,7 +14,9 @@ class Role(models.Model):
     Available user roles.
     """
 
+    SUPER_SUPER_ADMIN = "super_super_admin"
     SUPER_ADMIN = "super_admin"
+    SUPER_AUTHOR = "super_author"
     ADMIN = "admin"
     AUTHOR = "author"
     MEMBER = "member"
@@ -22,7 +24,9 @@ class Role(models.Model):
     SUBSCRIBER = "subscriber"
 
     ROLE_CHOICES = [
+        (SUPER_SUPER_ADMIN, "Super Super Admin"),
         (SUPER_ADMIN, "Super Admin"),
+        (SUPER_AUTHOR, "Super Author"),
         (ADMIN, "Admin / Editor"),
         (AUTHOR, "Author"),
         (MEMBER, "Member"),
@@ -53,7 +57,9 @@ class Role(models.Model):
 # =========================================================
 
 class Permission(models.Model):
-    """Fine-grained permission, assignable to roles."""
+    """
+    Fine-grained permission, assignable to roles.
+    """
 
     codename = models.CharField(
         max_length=100,
@@ -84,7 +90,9 @@ class Permission(models.Model):
 # =========================================================
 
 class User(AbstractUser):
-    """Custom user model."""
+    """
+    Custom user model.
+    """
 
     ACTIVE = "active"
     SUSPENDED = "suspended"
@@ -138,8 +146,14 @@ class User(AbstractUser):
             and self.role.name in role_names
         )
 
+    def is_super_super_admin(self) -> bool:
+        return self.has_role(Role.SUPER_SUPER_ADMIN)
+
     def is_super_admin(self) -> bool:
         return self.has_role(Role.SUPER_ADMIN)
+
+    def is_super_author(self) -> bool:
+        return self.has_role(Role.SUPER_AUTHOR)
 
     def is_subscriber(self) -> bool:
         return self.has_role(Role.SUBSCRIBER)
@@ -151,14 +165,63 @@ class User(AbstractUser):
         return self.has_role(Role.CONTRIBUTOR)
 
     def has_permission(self, codename: str) -> bool:
-        # Super Admin has all permissions
+        """
+        Check whether this user has a specific permission.
+
+        Permission hierarchy:
+
+        Super Super Admin
+            -> Full system permissions
+            -> Including bulk approval
+
+        Super Admin
+            -> Existing admin permissions
+            -> Bulk posts
+            -> NOT bulk approval
+
+        Super Author
+            -> Bulk posts
+            -> Normal author permissions
+
+        Other roles
+            -> Explicit role permissions only
+        """
+
+        # -----------------------------------------------------
+        # SUPER SUPER ADMIN
+        # -----------------------------------------------------
+        # Full system access.
+        if self.is_super_super_admin():
+            return True
+
+        # -----------------------------------------------------
+        # BULK APPROVAL
+        # -----------------------------------------------------
+        # This permission is EXCLUSIVELY available to
+        # Super Super Admin.
+        #
+        # This check must happen BEFORE the Super Admin
+        # shortcut below.
+        if codename == "bulk_approval":
+            return False
+
+        # -----------------------------------------------------
+        # SUPER ADMIN
+        # -----------------------------------------------------
+        # Super Admin retains the existing full admin
+        # permission behavior EXCEPT bulk_approval.
         if self.is_super_admin():
             return True
 
-        # Users without a role have no permissions
+        # -----------------------------------------------------
+        # USERS WITHOUT A ROLE
+        # -----------------------------------------------------
         if not self.role_id:
             return False
 
+        # -----------------------------------------------------
+        # ROLE-BASED PERMISSION
+        # -----------------------------------------------------
         return self.role.permissions.filter(
             codename=codename
         ).exists()
@@ -172,7 +235,9 @@ class User(AbstractUser):
 # =========================================================
 
 class Profile(models.Model):
-    """Extended public-facing profile information."""
+    """
+    Extended public-facing profile information.
+    """
 
     user = models.OneToOneField(
         User,
