@@ -93,3 +93,54 @@ def generate_presigned_put(
         "key": key,
         "public_url": public_url,
     }
+
+
+
+def head_r2_object(key: str):
+    """
+    Retrieve the metadata of an existing public R2 object.
+    """
+    return get_r2_client().head_object(
+        Bucket=settings.R2_PUBLIC_BUCKET_NAME,
+        Key=key,
+    )
+
+
+def generate_presigned_get(
+    key: str,
+    file_name: str = "video",
+    expires_in: int = 600,
+):
+    """
+    Generate a short-lived R2 download URL.
+
+    The response instructs the browser to download
+    the original file rather than play it inline.
+    """
+    from urllib.parse import quote
+    from pathlib import PurePath
+
+    safe_name = PurePath(file_name).name or "video"
+    encoded_name = quote(safe_name, safe="")
+
+    return get_r2_client().generate_presigned_url(
+        "get_object",
+        Params={
+            "Bucket": settings.R2_PUBLIC_BUCKET_NAME,
+            "Key": key,
+            "ResponseContentDisposition": (
+                f"attachment; filename*=UTF-8''{encoded_name}"
+            ),
+        },
+        ExpiresIn=expires_in,
+    )
+
+
+def delete_r2_object(key: str):
+    """
+    Delete an object from the public R2 bucket.
+    """
+    return get_r2_client().delete_object(
+        Bucket=settings.R2_PUBLIC_BUCKET_NAME,
+        Key=key,
+    )

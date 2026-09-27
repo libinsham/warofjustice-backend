@@ -1,48 +1,86 @@
+
+from django.conf import settings
 from rest_framework import serializers
 
-from .models import Media
-
-ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/webp", "image/avif", "image/gif"}
-MAX_UPLOAD_SIZE_BYTES = 15 * 1024 * 1024  # 15MB
+from .models import Video
 
 
-class PresignRequestSerializer(serializers.Serializer):
-    file_name = serializers.CharField(max_length=255)
-    content_type = serializers.CharField(max_length=100)
+ALLOWED_VIDEO_TYPES = (
+    "video/mp4",
+    "video/webm",
+    "video/quicktime",
+    "video/x-m4v",
+)
+
+
+def get_max_video_size():
+    return int(
+        getattr(
+            settings,
+            "R2_VIDEO_MAX_BYTES",
+            5 * 1024 * 1024 * 1024,
+        )
+    )
+
+
+class VideoSerializer(serializers.ModelSerializer):
+    url = serializers.SerializerMethodField()
+
+    class Meta:
+        model = Video
+        fields = [
+            "id",
+            "title",
+            "bunny_video_id",
+            "thumbnail_url",
+            "playback_url",
+            "duration_seconds",
+            "r2_key",
+            "file_name",
+            "mime_type",
+            "size_bytes",
+            "status",
+            "url",
+            "created_at",
+        ]
+        read_only_fields = fields
+
+    def get_url(self, obj):
+        if obj.r2_key:
+            base_url = settings.R2_PUBLIC_BASE_URL.rstrip("/")
+            return f"{base_url}/{obj.r2_key}"
+
+        # Keep URLs for legacy Bunny records.
+        return obj.playback_url or None
+
+
+class R2VideoUploadSerializer(serializers.Serializer):
+    title = serializers.CharField(
+        max_length=255,
+        required=False,
+        allow_blank=True,
+    )
+    file_name = serializers.CharField(
+        max_length=255,
+    )
+    content_type = serializers.ChoiceField(
+        choices=ALLOWED_VIDEO_TYPES,
+    )
     size_bytes = serializers.IntegerField(min_value=1)
 
-    def validate_content_type(self, value):
-        if value not in ALLOWED_IMAGE_TYPES:
+    def validate_size_bytes(self, value):
+        if value > get_max_video_size():
             raise serializers.ValidationError(
-                f"Unsupported file type '{value}'. Allowed: {', '.join(sorted(ALLOWED_IMAGE_TYPES))}"
+                "Video exceeds the permitted upload size."
             )
         return value
 
-    def validate_size_bytes(self, value):
-        if value > MAX_UPLOAD_SIZE_BYTES:
-            raise serializers.ValidationError("File exceeds the 15MB upload limit.")
-        return value
+
+class R2VideoConfirmSerializer(R2VideoUploadSerializer):
+    key = serializers.CharField(max_length=1024)
 
 
-class MediaSerializer(serializers.ModelSerializer):
-    class Meta:
-        model = Media
-        fields = [
-            "id", "post", "type", "file_name", "url", "mime_type",
-            "size_bytes", "width", "height", "alt_text", "created_at",
-        ]
-        read_only_fields = ["url"]
-
-
-class ConfirmUploadSerializer(serializers.Serializer):
-    """Client calls this after successfully PUTting the file to R2, so we
-    record the metadata. We never trust the client's claimed URL blindly —
-    it must match a key we issued (checked in the view)."""
-    key = serializers.CharField(max_length=500)
-    file_name = serializers.CharField(max_length=255)
-    mime_type = serializers.CharField(max_length=100)
-    size_bytes = serializers.IntegerField(min_value=1)
-    width = serializers.IntegerField(required=False, allow_null=True)
-    height = serializers.IntegerField(required=False, allow_null=True)
-    alt_text = serializers.CharField(required=False, allow_blank=True, max_length=255)
-    post = serializers.IntegerField(required=False, allow_null=True)
+class BunnyWebhookSerializer(serializers.Serializer):
+    # Retain this serializer for the legacy Bunny webhook.
+    VideoGuid = serializers.CharField()
+    Status = serializers.IntegerField()
