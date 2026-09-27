@@ -2,8 +2,8 @@
 import hmac
 from pathlib import PurePath
 
-from botocore.exceptions import ClientError
-from django.conf import settings
+from botocore.exceptions import BotoCoreError, ClientError
+from django.conf import settings as dj_settings
 from rest_framework import status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import (
@@ -15,16 +15,16 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 
 from apps.core.models import AuditLog
-from apps.core.permissions import IsAuthorRole
-
-from . import bunny
-from .models import Video
-from .r2 import (
+from apps.core.permissions import IsAdminOrEditor, IsAuthorRole
+from apps.media_lib.r2 import (
     delete_r2_object,
     generate_presigned_get,
     generate_presigned_put,
     head_r2_object,
 )
+
+from . import bunny
+from .models import Video
 from .serializers import (
     BunnyWebhookSerializer,
     R2VideoConfirmSerializer,
@@ -32,6 +32,10 @@ from .serializers import (
     VideoSerializer,
 )
 
+
+# =========================================================
+# CONSTANTS AND HELPERS
+# =========================================================
 
 ALLOWED_VIDEO_TYPES = {
     "video/mp4",
@@ -44,12 +48,10 @@ DEFAULT_MAX_VIDEO_BYTES = 5 * 1024 * 1024 * 1024
 
 
 def get_max_video_bytes():
-    """
-    Return the configured maximum single-request video size.
-    """
+    """Return the configured maximum video upload size."""
     return int(
         getattr(
-            settings,
+            dj_settings,
             "R2_VIDEO_MAX_BYTES",
             DEFAULT_MAX_VIDEO_BYTES,
         )
@@ -57,9 +59,7 @@ def get_max_video_bytes():
 
 
 def get_role_name(user):
-    """
-    Return the user's role name safely.
-    """
+    """Safely return the user's role name."""
     return getattr(
         getattr(user, "role", None),
         "name",
@@ -68,9 +68,7 @@ def get_role_name(user):
 
 
 def is_video_reviewer(user):
-    """
-    Check whether the user can review and download videos.
-    """
+    """Check whether a user may review and download videos."""
     return get_role_name(user) in {
         "super_super_admin",
         "super_admin",
@@ -85,7 +83,7 @@ def is_video_reviewer(user):
 
 class IsVideoReviewer(BasePermission):
     """
-    Only super admins, admins and editors can review
+    Allow super admins, admins and editors to review
     and download uploaded videos.
     """
 
@@ -99,12 +97,14 @@ class IsVideoReviewer(BasePermission):
 
 class AdminVideoViewSet(viewsets.ReadOnlyModelViewSet):
     """
-    Admin video listing and temporary download links.
+    Admin video library.
 
-    Supports:
-        GET /dashboard/videos/
-        GET /dashboard/videos/{id}/
-        GET /dashboard/videos/{id}/download/
+    Routes, assuming the existing admin router:
+        GET /api/v1/admin/videos/
+        GET /api/v1/admin/videos/{id}/
+        GET /api/v1/admin/videos/{id}/download/
+
+    Video creation and deletion are handled separately.
     """
 
     serializer_class = VideoSerializer
@@ -125,9 +125,7 @@ class AdminVideoViewSet(viewsets.ReadOnlyModelViewSet):
         url_path="download",
     )
     def download(self, request, pk=None):
-        """
-        Generate a temporary download URL for an R2 video.
-        """
+        """Generate a temporary R2 download URL."""
         video = self.get_object()
 
         if not video.r2_key:
@@ -147,7 +145,7 @@ class AdminVideoViewSet(viewsets.ReadOnlyModelViewSet):
                 file_name=video.file_name or "video",
                 expires_in=600,
             )
-        except ClientError:
+        except (BotoCoreError, ClientError):
             return Response(
                 {
                     "detail": (
@@ -173,17 +171,16 @@ class AdminVideoViewSet(viewsets.ReadOnlyModelViewSet):
 
 class VideoViewSet(viewsets.ModelViewSet):
     """
-    Direct Cloudflare R2 video upload and personal
-    video management.
+    Cloudflare R2 video upload and personal video management.
 
-    Supports:
-        GET    /videos/
-        POST   /videos/presign/
-        POST   /videos/confirm/
-        DELETE /videos/{id}/
+    Routes, assuming the existing dashboard router:
+        GET    /api/v1/dashboard/videos/
+        POST   /api/v1/dashboard/videos/presign/
+        POST   /api/v1/dashboard/videos/confirm/
+        DELETE /api/v1/dashboard/videos/{id}/
 
-    New uploads use R2. The old Bunny upload-slot
-    endpoint is no longer exposed here.
+    New uploads use R2. The Bunny create-slot action
+    is intentionally no longer exposed.
     """
 
     serializer_class = VideoSerializer
@@ -203,7 +200,7 @@ class VideoViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """
         Admin-level users can list all videos.
-        Other permitted users can see only their own.
+        Other permitted users see only their own videos.
         """
         role_name = get_role_name(self.request.user)
 
@@ -226,7 +223,8 @@ class VideoViewSet(viewsets.ModelViewSet):
 
     def create(self, request, *args, **kwargs):
         """
-        Disable ordinary POST creation.
+        Disable ordinary video creation.
+
         New videos must use presign and confirm.
         """
         return Response(
@@ -250,10 +248,10 @@ class VideoViewSet(viewsets.ModelViewSet):
     )
     def presign(self, request):
         """
-        Generate a short-lived R2 upload URL.
+        Generate a short-lived R2 PUT URL.
 
-        The browser uploads the video directly to R2.
-        Django does not proxy the video bytes.
+        The browser uploads the original video directly
+        to R2. Django never proxies the video bytes.
         """
         serializer = R2VideoUploadSerializer(
             data=request.data,
@@ -285,7 +283,10 @@ class VideoViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if size_bytes < 1 or size_bytes > get_max_video_bytes():
+        if (
+            size_bytes < 1
+            or size_bytes > get_max_video_bytes()
+        ):
             return Response(
                 {
                     "detail": (
@@ -302,7 +303,7 @@ class VideoViewSet(viewsets.ModelViewSet):
                 content_type=content_type,
                 folder=f"videos/{request.user.pk}",
             )
-        except ClientError:
+        except (BotoCoreError, ClientError):
             return Response(
                 {
                     "detail": (
@@ -332,11 +333,11 @@ class VideoViewSet(viewsets.ModelViewSet):
     )
     def confirm(self, request):
         """
-        Verify the R2 object and create the Video record.
+        Verify the R2 object and create a Video record.
 
-        The object must belong to the authenticated user.
-        Its actual size and content type are checked against
-        the upload request.
+        The object must be under the authenticated user's
+        video prefix. Its actual size and content type
+        are checked against the submitted metadata.
         """
         serializer = R2VideoConfirmSerializer(
             data=request.data,
@@ -348,7 +349,7 @@ class VideoViewSet(viewsets.ModelViewSet):
 
         expected_prefix = f"videos/{request.user.pk}/"
 
-        # A user can confirm only objects under their own prefix.
+        # Do not permit confirmation of another user's object.
         if not key.startswith(expected_prefix):
             return Response(
                 {
@@ -359,8 +360,7 @@ class VideoViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # Return an already-confirmed video instead of
-        # creating a duplicate record.
+        # Make confirmation idempotent for an existing record.
         existing = Video.objects.filter(
             r2_key=key,
         ).first()
@@ -381,7 +381,7 @@ class VideoViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_200_OK,
             )
 
-        # Read the actual uploaded object metadata from R2.
+        # Verify the object exists in R2.
         try:
             metadata = head_r2_object(key)
 
@@ -404,6 +404,16 @@ class VideoViewSet(viewsets.ModelViewSet):
                     status=status.HTTP_400_BAD_REQUEST,
                 )
 
+            return Response(
+                {
+                    "detail": (
+                        "Unable to verify the uploaded R2 video."
+                    )
+                },
+                status=status.HTTP_502_BAD_GATEWAY,
+            )
+
+        except BotoCoreError:
             return Response(
                 {
                     "detail": (
@@ -479,7 +489,7 @@ class VideoViewSet(viewsets.ModelViewSet):
             or "Uploaded video"
         )
 
-        # Create the video record only after verifying R2.
+        # Create the database record after R2 verification.
         video = Video.objects.create(
             uploaded_by=request.user,
             title=title,
@@ -510,20 +520,18 @@ class VideoViewSet(viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """
-        Delete the file from its storage provider, then
-        remove the database record.
+        Delete the corresponding storage object and
+        then remove its database record.
 
-        R2 is used for new videos. Bunny deletion remains
-        available for legacy Bunny records.
+        R2 is used for new videos. Bunny deletion is
+        retained for legacy Bunny records.
         """
         if instance.r2_key:
             delete_r2_object(instance.r2_key)
 
         elif instance.bunny_video_id:
-            # Legacy Bunny functionality retained for later.
-            bunny.delete_video(
-                instance.bunny_video_id
-            )
+            # Legacy Bunny support; not used for new uploads.
+            bunny.delete_video(instance.bunny_video_id)
 
         AuditLog.objects.create(
             actor=self.request.user,
@@ -543,29 +551,37 @@ class BunnyWebhookView(APIView):
     """
     Legacy Bunny Stream webhook.
 
-    Retained for old Bunny videos and possible future use.
-    New R2 uploads do not use this webhook.
+    Retained for existing Bunny videos and possible future
+    use. New Cloudflare R2 uploads do not use this webhook.
     """
 
     permission_classes = [AllowAny]
 
+    # Bunny's numeric status codes:
+    # 3 = Finished
+    # 5 = Error
+    STATUS_MAP = {
+        3: Video.READY,
+        5: Video.FAILED,
+    }
+
     def post(self, request):
         expected_secret = getattr(
-            settings,
+            dj_settings,
             "BUNNY_WEBHOOK_SECRET",
             "",
         )
 
-        supplied_secret = request.headers.get(
+        provided_secret = request.headers.get(
             "X-Webhook-Secret",
             "",
         )
 
         if (
             not expected_secret
-            or not supplied_secret
+            or not provided_secret
             or not hmac.compare_digest(
-                str(supplied_secret),
+                str(provided_secret),
                 str(expected_secret),
             )
         ):
@@ -573,7 +589,7 @@ class BunnyWebhookView(APIView):
                 {
                     "detail": "Invalid webhook secret."
                 },
-                status=status.HTTP_403_FORBIDDEN,
+                status=status.HTTP_401_UNAUTHORIZED,
             )
 
         serializer = BunnyWebhookSerializer(
@@ -581,68 +597,43 @@ class BunnyWebhookView(APIView):
         )
         serializer.is_valid(raise_exception=True)
 
-        values = serializer.validated_data
-        video_guid = values["VideoGuid"]
-        bunny_status = values["Status"]
+        guid = serializer.validated_data["VideoGuid"]
+        bunny_status = serializer.validated_data["Status"]
 
-        video = Video.objects.filter(
-            bunny_video_id=video_guid,
-        ).first()
-
-        if not video:
+        try:
+            video = Video.objects.get(
+                bunny_video_id=guid,
+            )
+        except Video.DoesNotExist:
             return Response(
                 {
-                    "detail": "Bunny video not found."
+                    "detail": "Unknown Bunny video."
                 },
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # Bunny status 3 means finished; 5 means failed.
-        if bunny_status == 3:
-            video.status = Video.READY
-            video.playback_url = bunny.build_playback_url(
-                video.bunny_video_id,
-            )
-            video.thumbnail_url = bunny.build_thumbnail_url(
-                video.bunny_video_id,
-            )
-
-            audit_action = "video.bunny_ready"
-
-        elif bunny_status == 5:
-            video.status = Video.FAILED
-            audit_action = "video.bunny_failed"
-
-        else:
-            # Ignore other Bunny processing statuses.
-            return Response(
-                {
-                    "detail": "Webhook status ignored."
-                },
-                status=status.HTTP_200_OK,
-            )
-
-        video.save(
-            update_fields=[
-                "status",
-                "playback_url",
-                "thumbnail_url",
-                "updated_at",
-            ]
+        video.status = self.STATUS_MAP.get(
+            bunny_status,
+            Video.PROCESSING,
         )
+
+        if video.status == Video.READY:
+            video.playback_url = bunny.build_playback_url(guid)
+            video.thumbnail_url = bunny.build_thumbnail_url(guid)
+
+        video.save()
 
         AuditLog.objects.create(
             actor=None,
-            action=audit_action,
+            action="video.status_updated",
             target_type="Video",
             target_id=str(video.id),
+            metadata={
+                "bunny_status": bunny_status,
+            },
         )
 
         return Response(
-            {
-                "detail": "Bunny webhook processed.",
-                "video_id": video.id,
-                "status": video.status,
-            },
+            {"detail": "ok"},
             status=status.HTTP_200_OK,
         )

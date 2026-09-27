@@ -1,23 +1,30 @@
+
 """
 Cloudflare R2 direct-upload helper.
 
-Article/public media:
+Public article media:
     R2_PUBLIC_BUCKET_NAME
 
 Private/member documents:
     R2_PRIVATE_BUCKET_NAME
 
-The Django server never proxies article file bytes.
-It only creates a short-lived presigned PUT URL.
-The browser uploads directly to Cloudflare R2.
+Article images and review videos use the public R2 bucket.
+The Django server generates short-lived presigned URLs.
+The browser uploads original files directly to Cloudflare R2.
 """
 
 import uuid
+from pathlib import PurePath
+from urllib.parse import quote
 
 import boto3
 from botocore.client import Config
 from django.conf import settings
 
+
+# =========================================================
+# R2 CLIENT
+# =========================================================
 
 def get_r2_client():
     """
@@ -33,21 +40,58 @@ def get_r2_client():
     )
 
 
+# =========================================================
+# OBJECT KEY
+# =========================================================
+
 def build_object_key(
     file_name: str,
     folder: str = "uploads",
 ) -> str:
     """
     Generate a unique R2 object key.
+
+    Only the file extension is retained from the
+    original filename. The uploaded filename itself
+    is not used as the object key.
     """
-    ext = (
-        file_name.rsplit(".", 1)[-1].lower()
-        if "." in file_name
+    safe_name = PurePath(
+        str(file_name).replace("\\", "/")
+    ).name
+
+    extension = (
+        safe_name.rsplit(".", 1)[-1].lower()
+        if "." in safe_name
         else "bin"
     )
 
-    return f"{folder}/{uuid.uuid4().hex}.{ext}"
+    # Keep extensions simple and safe.
+    if (
+        not extension
+        or len(extension) > 16
+        or not extension.isascii()
+        or not extension.isalnum()
+    ):
+        extension = "bin"
 
+    safe_folder = str(folder).strip("/")
+
+    if (
+        not safe_folder
+        or "\\" in safe_folder
+        or ".." in safe_folder.split("/")
+    ):
+        raise ValueError("Invalid R2 folder.")
+
+    return (
+        f"{safe_folder}/"
+        f"{uuid.uuid4().hex}.{extension}"
+    )
+
+
+# =========================================================
+# PRESIGNED PUT URL
+# =========================================================
 
 def generate_presigned_put(
     file_name: str,
@@ -55,7 +99,14 @@ def generate_presigned_put(
     folder: str = "uploads",
 ):
     """
-    Generate a presigned PUT URL for PUBLIC ARTICLE MEDIA.
+    Generate a short-lived presigned PUT URL.
+
+    Used for:
+    - Article images
+    - Article videos
+
+    Uploads are sent directly from the browser to
+    the public Cloudflare R2 bucket.
 
     Returns:
         {
@@ -64,7 +115,6 @@ def generate_presigned_put(
             "public_url": "..."
         }
     """
-
     key = build_object_key(
         file_name=file_name,
         folder=folder,
@@ -95,10 +145,17 @@ def generate_presigned_put(
     }
 
 
+# =========================================================
+# VERIFY R2 OBJECT
+# =========================================================
 
 def head_r2_object(key: str):
     """
-    Retrieve the metadata of an existing public R2 object.
+    Retrieve metadata for an existing object
+    in the public R2 bucket.
+
+    Used to verify uploaded video size and
+    content type before creating a database record.
     """
     return get_r2_client().head_object(
         Bucket=settings.R2_PUBLIC_BUCKET_NAME,
@@ -106,21 +163,30 @@ def head_r2_object(key: str):
     )
 
 
+# =========================================================
+# PRESIGNED GET URL
+# =========================================================
+
 def generate_presigned_get(
     key: str,
     file_name: str = "video",
     expires_in: int = 600,
 ):
     """
-    Generate a short-lived R2 download URL.
+    Generate a temporary R2 download URL.
 
-    The response instructs the browser to download
-    the original file rather than play it inline.
+    Content-Disposition requests a file download
+    instead of inline playback.
+
+    Note:
+    This presigned URL does not make an object private
+    if the same object is also accessible through a
+    public R2 custom domain.
     """
-    from urllib.parse import quote
-    from pathlib import PurePath
+    safe_name = PurePath(
+        str(file_name).replace("\\", "/")
+    ).name or "video"
 
-    safe_name = PurePath(file_name).name or "video"
     encoded_name = quote(safe_name, safe="")
 
     return get_r2_client().generate_presigned_url(
@@ -136,9 +202,16 @@ def generate_presigned_get(
     )
 
 
+# =========================================================
+# DELETE R2 OBJECT
+# =========================================================
+
 def delete_r2_object(key: str):
     """
     Delete an object from the public R2 bucket.
+
+    Call this only after verifying that the
+    requesting user is authorized to delete it.
     """
     return get_r2_client().delete_object(
         Bucket=settings.R2_PUBLIC_BUCKET_NAME,

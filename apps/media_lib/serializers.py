@@ -1,86 +1,97 @@
 
-from django.conf import settings
 from rest_framework import serializers
 
-from .models import Video
+from .models import Media
 
 
-ALLOWED_VIDEO_TYPES = (
-    "video/mp4",
-    "video/webm",
-    "video/quicktime",
-    "video/x-m4v",
-)
+# =========================================================
+# MEDIA SERIALIZER
+# =========================================================
 
+class MediaSerializer(serializers.ModelSerializer):
+    """
+    Serializer for media stored in Cloudflare R2.
 
-def get_max_video_size():
-    return int(
-        getattr(
-            settings,
-            "R2_VIDEO_MAX_BYTES",
-            5 * 1024 * 1024 * 1024,
-        )
-    )
-
-
-class VideoSerializer(serializers.ModelSerializer):
-    url = serializers.SerializerMethodField()
+    Supports image, document and video metadata.
+    """
 
     class Meta:
-        model = Video
+        model = Media
         fields = [
             "id",
-            "title",
-            "bunny_video_id",
-            "thumbnail_url",
-            "playback_url",
-            "duration_seconds",
-            "r2_key",
+            "post",
+            "uploaded_by",
+            "type",
             "file_name",
+            "r2_key",
+            "url",
             "mime_type",
             "size_bytes",
-            "status",
-            "url",
+            "width",
+            "height",
+            "alt_text",
             "created_at",
         ]
-        read_only_fields = fields
+        read_only_fields = [
+            "id",
+            "uploaded_by",
+            "r2_key",
+            "url",
+            "size_bytes",
+            "width",
+            "height",
+            "created_at",
+        ]
 
-    def get_url(self, obj):
-        if obj.r2_key:
-            base_url = settings.R2_PUBLIC_BASE_URL.rstrip("/")
-            return f"{base_url}/{obj.r2_key}"
 
-        # Keep URLs for legacy Bunny records.
-        return obj.playback_url or None
+# =========================================================
+# R2 PRESIGNED UPLOAD REQUEST
+# =========================================================
 
+class PresignRequestSerializer(serializers.Serializer):
+    """
+    Validates the image or media upload request
+    before generating an R2 presigned PUT URL.
+    """
 
-class R2VideoUploadSerializer(serializers.Serializer):
-    title = serializers.CharField(
-        max_length=255,
-        required=False,
-        allow_blank=True,
-    )
     file_name = serializers.CharField(
         max_length=255,
     )
-    content_type = serializers.ChoiceField(
-        choices=ALLOWED_VIDEO_TYPES,
+
+    content_type = serializers.CharField(
+        max_length=100,
     )
-    size_bytes = serializers.IntegerField(min_value=1)
 
-    def validate_size_bytes(self, value):
-        if value > get_max_video_size():
-            raise serializers.ValidationError(
-                "Video exceeds the permitted upload size."
-            )
-        return value
+    size_bytes = serializers.IntegerField(
+        min_value=1,
+        required=False,
+    )
 
 
-class R2VideoConfirmSerializer(R2VideoUploadSerializer):
-    key = serializers.CharField(max_length=1024)
+# =========================================================
+# R2 UPLOAD CONFIRMATION
+# =========================================================
 
+class ConfirmUploadSerializer(serializers.Serializer):
+    """
+    Validates the uploaded R2 object confirmation request.
+    """
 
-class BunnyWebhookSerializer(serializers.Serializer):
-    # Retain this serializer for the legacy Bunny webhook.
-    VideoGuid = serializers.CharField()
-    Status = serializers.IntegerField()
+    key = serializers.CharField(
+        max_length=500,
+    )
+
+    file_name = serializers.CharField(
+        max_length=255,
+    )
+
+    mime_type = serializers.CharField(
+        max_length=100,
+        required=False,
+        allow_blank=True,
+    )
+
+    size_bytes = serializers.IntegerField(
+        min_value=1,
+        required=False,
+    )
