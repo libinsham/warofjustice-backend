@@ -16,9 +16,9 @@ class CustomUserManager(BaseUserManager):
         # Assign Reader role by default
         if "role" not in extra_fields:
             role, _ = Role.objects.get_or_create(
-                name=Role.READER,
+                name=Role.SUBSCRIBER,
                 defaults={
-                    "label": "Reader",
+                    "label": "Subscriber",
                     "description": "Default reader role",
                 }
             )
