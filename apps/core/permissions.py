@@ -2,8 +2,7 @@
 """
 Shared DRF permission classes implementing War of Justice's RBAC rules.
 
-Every rule is enforced server-side. Frontend restrictions are for
-user experience only and are never the actual authorization boundary.
+Every rule is enforced server-side.
 
 Supported roles:
 - super_super_admin
@@ -31,15 +30,25 @@ def get_role_name(user):
 
 def is_super_super_admin(user):
     """Check for the highest-level administrator role."""
-    return get_role_name(user) == "super_super_admin"
+    if get_role_name(user) == "super_super_admin":
+        return True
+
+    checker = getattr(user, "is_super_super_admin", None)
+    return bool(callable(checker) and checker())
 
 
 def is_super_admin(user):
-    """Check for either super administrator role."""
-    return get_role_name(user) in {
-        "super_super_admin",
-        "super_admin",
-    }
+    """
+    Check for either Super Admin or Super Super Admin.
+    """
+    if is_super_super_admin(user):
+        return True
+
+    if get_role_name(user) == "super_admin":
+        return True
+
+    checker = getattr(user, "is_super_admin", None)
+    return bool(callable(checker) and checker())
 
 
 class IsSuperAdmin(BasePermission):
@@ -89,10 +98,14 @@ class IsAuthorRole(BasePermission):
 
         user = request.user
 
-        return bool(
-            is_super_admin(user)
-            or user.has_role("admin", "author")
-        )
+        # Explicitly permit both administrator levels.
+        if is_super_super_admin(user):
+            return True
+
+        if is_super_admin(user):
+            return True
+
+        return bool(user.has_role("admin", "author"))
 
 
 class HasPermissionCode(BasePermission):
