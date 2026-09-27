@@ -1,3 +1,4 @@
+
 from django.db import transaction
 from django.utils import timezone
 
@@ -30,25 +31,58 @@ from .serializers import (
 
 
 # =========================================================
+# ROLE AND PERMISSION HELPERS
+# =========================================================
+
+ADMIN_ROLES = {
+    "admin",
+    "super_admin",
+    "super_super_admin",
+    "editor",
+    "bureau_chief",
+}
+
+
+def get_role_name(user):
+    """Return the authenticated user's role name."""
+    return getattr(
+        getattr(user, "role", None),
+        "name",
+        "",
+    )
+
+
+def has_admin_access(user):
+    """Check access to existing administrative APIs."""
+    return bool(
+        user
+        and user.is_authenticated
+        and get_role_name(user) in ADMIN_ROLES
+    )
+
+
+def admin_access_denied(message):
+    return Response(
+        {"detail": message},
+        status=status.HTTP_403_FORBIDDEN,
+    )
+
+
+# =========================================================
 # TOKEN HELPER
 # =========================================================
 
 def issue_tokens(user):
-    """
-    Create a fresh JWT access + refresh token pair.
-
-    Only the access token is returned in JSON.
-    The refresh token is stored in an httpOnly cookie.
-    """
+    """Create a JWT access and refresh token pair."""
     refresh = RefreshToken.for_user(user)
 
     return {
-        "access": str(refresh.access_token)
+        "access": str(refresh.access_token),
     }, str(refresh)
 
 
 # =========================================================
-# READER / BASIC SUBSCRIBER REGISTRATION
+# READER REGISTRATION
 # =========================================================
 
 class RegisterReaderView(APIView):
@@ -60,35 +94,23 @@ class RegisterReaderView(APIView):
         serializer = RegisterReaderSerializer(
             data=request.data
         )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        access_data, refresh_token = issue_tokens(
-            user
-        )
+        access_data, refresh_token = issue_tokens(user)
 
         response = Response(
             {
                 "user": UserSerializer(
                     user,
-                    context={
-                        "request": request,
-                    },
+                    context={"request": request},
                 ).data,
                 **access_data,
             },
             status=status.HTTP_201_CREATED,
         )
 
-        _set_refresh_cookie(
-            response,
-            refresh_token,
-        )
-
+        _set_refresh_cookie(response, refresh_token)
         return response
 
 
@@ -97,20 +119,6 @@ class RegisterReaderView(APIView):
 # =========================================================
 
 class SubscriberRegisterView(APIView):
-    """
-    Public Subscriber registration.
-
-    Creates:
-    - User
-    - Profile
-    - SubscriberApplication
-
-    Returns:
-    - User
-    - Access token
-    - Subscriber application information
-    """
-
     permission_classes = [AllowAny]
 
     def post(self, request):
@@ -119,88 +127,45 @@ class SubscriberRegisterView(APIView):
         serializer = SubscriberRegisterSerializer(
             data=request.data
         )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
-        access_data, refresh_token = issue_tokens(
-            user
-        )
+        access_data, refresh_token = issue_tokens(user)
 
         response = Response(
             {
                 "user": UserSerializer(
                     user,
-                    context={
-                        "request": request,
-                    },
+                    context={"request": request},
                 ).data,
                 **access_data,
             },
             status=status.HTTP_201_CREATED,
         )
 
-        _set_refresh_cookie(
-            response,
-            refresh_token,
-        )
-
+        _set_refresh_cookie(response, refresh_token)
         return response
 
 
 # =========================================================
-# MEMBER & CONTRIBUTOR REGISTRATION
+# MEMBER AND CONTRIBUTOR REGISTRATION
 # =========================================================
 
 class MemberContributorRegisterView(APIView):
-    """
-    Public Member & Contributor application.
-
-    Accepts multipart/form-data.
-
-    Supported uploads:
-
-    - Selfie photograph
-    - Aadhaar card
-    - PAN card
-    - Identity proof
-    - Supporting document
-
-    The application is created as PENDING.
-
-    The applicant does not receive the Member or Contributor
-    role until an administrator approves the application.
-    """
-
     permission_classes = [AllowAny]
-
-    parser_classes = [
-        MultiPartParser,
-        FormParser,
-    ]
+    parser_classes = [MultiPartParser, FormParser]
 
     def post(self, request):
         serializer = MemberContributorRegisterSerializer(
             data=request.data
         )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
+        serializer.is_valid(raise_exception=True)
         application = serializer.save()
 
-        application_data = (
-            MemberContributorApplicationSerializer(
-                application,
-                context={
-                    "request": request,
-                },
-            ).data
-        )
+        application_data = MemberContributorApplicationSerializer(
+            application,
+            context={"request": request},
+        ).data
 
         return Response(
             {
@@ -216,76 +181,30 @@ class MemberContributorRegisterView(APIView):
 
 # =========================================================
 # SUBSCRIBER APPLICATIONS
-# ADMIN LIST
+# ADMIN AND SUPER ADMIN LIST
 # =========================================================
 
 class SubscriberApplicationListView(APIView):
-    """
-    Returns real Subscriber applications for the Admin dashboard.
-
-    GET:
-        /api/v1/auth/subscriber-applications/
-    """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # -----------------------------------------------------
-        # Check administrator access
-        # -----------------------------------------------------
-
-        role_name = getattr(
-            getattr(
-                request.user,
-                "role",
-                None,
-            ),
-            "name",
-            "",
-        )
-
-        allowed_roles = {
-            "admin",
-            "super_admin",
-            "editor",
-            "bureau_chief",
-        }
-
-        if role_name not in allowed_roles:
-            return Response(
-                {
-                    "detail": (
-                        "You do not have permission "
-                        "to view subscriber applications."
-                    )
-                },
-                status=status.HTTP_403_FORBIDDEN,
+        if not has_admin_access(request.user):
+            return admin_access_denied(
+                "You do not have permission to view "
+                "subscriber applications."
             )
-
-        # -----------------------------------------------------
-        # Get applications
-        # -----------------------------------------------------
 
         applications = (
             SubscriberApplication.objects
-            .select_related(
-                "user",
-                "user__profile",
-            )
+            .select_related("user", "user__profile")
             .all()
             .order_by("-created_at")
         )
 
-        # -----------------------------------------------------
-        # Serialize
-        # -----------------------------------------------------
-
         serializer = AdminSubscriberApplicationSerializer(
             applications,
             many=True,
-            context={
-                "request": request,
-            },
+            context={"request": request},
         )
 
         return Response(
@@ -295,57 +214,18 @@ class SubscriberApplicationListView(APIView):
 
 
 # =========================================================
-# MEMBER & CONTRIBUTOR APPLICATIONS
-# ADMIN LIST
+# MEMBER AND CONTRIBUTOR APPLICATIONS
+# ADMIN AND SUPER ADMIN LIST
 # =========================================================
 
 class MemberContributorApplicationListView(APIView):
-    """
-    Returns real Member & Contributor applications
-    for the Admin dashboard.
-
-    GET:
-        /api/v1/auth/member-contributor-applications/
-    """
-
     permission_classes = [IsAuthenticated]
 
     def get(self, request):
-        # -----------------------------------------------------
-        # Check administrator access
-        # -----------------------------------------------------
-
-        role_name = getattr(
-            getattr(
-                request.user,
-                "role",
-                None,
-            ),
-            "name",
-            "",
-        )
-
-        allowed_roles = {
-            "admin",
-            "super_admin",
-            "editor",
-            "bureau_chief",
-        }
-
-        if role_name not in allowed_roles:
-            return Response(
-                {
-                    "detail": (
-                        "You do not have permission "
-                        "to view applications."
-                    )
-                },
-                status=status.HTTP_403_FORBIDDEN,
+        if not has_admin_access(request.user):
+            return admin_access_denied(
+                "You do not have permission to view applications."
             )
-
-        # -----------------------------------------------------
-        # Get applications
-        # -----------------------------------------------------
 
         applications = (
             MemberContributorApplication.objects
@@ -358,16 +238,10 @@ class MemberContributorApplicationListView(APIView):
             .order_by("-created_at")
         )
 
-        # -----------------------------------------------------
-        # Serialize
-        # -----------------------------------------------------
-
         serializer = MemberContributorApplicationSerializer(
             applications,
             many=True,
-            context={
-                "request": request,
-            },
+            context={"request": request},
         )
 
         return Response(
@@ -377,54 +251,18 @@ class MemberContributorApplicationListView(APIView):
 
 
 # =========================================================
-# MEMBER & CONTRIBUTOR APPLICATION
-# APPROVE
+# APPROVE MEMBER AND CONTRIBUTOR APPLICATION
 # =========================================================
 
 class MemberContributorApplicationApproveView(APIView):
-    """
-    Approve a pending Member & Contributor application.
-
-    There is only ONE access level for approved Member & Contributor
-    accounts in this project: the existing AUTHOR role.
-
-    POST:
-        /api/v1/auth/member-contributor-applications/<id>/approve/
-    """
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        # -----------------------------------------------------
-        # Check administrator access
-        # -----------------------------------------------------
-        role_name = getattr(
-            getattr(request.user, "role", None),
-            "name",
-            "",
-        )
-
-        allowed_roles = {
-            "admin",
-            "super_admin",
-            "editor",
-            "bureau_chief",
-        }
-
-        if role_name not in allowed_roles:
-            return Response(
-                {
-                    "detail": (
-                        "You do not have permission "
-                        "to approve applications."
-                    )
-                },
-                status=status.HTTP_403_FORBIDDEN,
+        if not has_admin_access(request.user):
+            return admin_access_denied(
+                "You do not have permission to approve applications."
             )
 
-        # -----------------------------------------------------
-        # Get application
-        # -----------------------------------------------------
         try:
             application = (
                 MemberContributorApplication.objects
@@ -437,24 +275,16 @@ class MemberContributorApplicationApproveView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # -----------------------------------------------------
-        # Only pending applications
-        # -----------------------------------------------------
         if application.status != MemberContributorApplication.PENDING:
             return Response(
                 {
                     "detail": (
-                        "Only pending applications "
-                        "can be approved."
+                        "Only pending applications can be approved."
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # -----------------------------------------------------
-        # Use the existing AUTHOR role.
-        # No separate member/contributor account roles.
-        # -----------------------------------------------------
         target_role, _ = Role.objects.get_or_create(
             name=Role.AUTHOR,
             defaults={
@@ -465,23 +295,12 @@ class MemberContributorApplicationApproveView(APIView):
             },
         )
 
-        # -----------------------------------------------------
-        # Atomic approval
-        # -----------------------------------------------------
         with transaction.atomic():
-            application.status = (
-                MemberContributorApplication.APPROVED
-            )
-
-            # Kept for backwards compatibility with the current
-            # database field. It is NOT used as a separate account
-            # permission/access role.
+            application.status = MemberContributorApplication.APPROVED
             application.approved_role = None
-
             application.approved_by = request.user
             application.approved_at = timezone.now()
 
-            # Clear rejection information
             application.rejection_reason = ""
             application.rejected_by = None
             application.rejected_at = None
@@ -499,23 +318,11 @@ class MemberContributorApplicationApproveView(APIView):
                 ]
             )
 
-            # -------------------------------------------------
-            # Activate user + assign shared AUTHOR access
-            # -------------------------------------------------
             user = application.user
             user.role = target_role
             user.status = User.ACTIVE
+            user.save(update_fields=["role", "status"])
 
-            user.save(
-                update_fields=[
-                    "role",
-                    "status",
-                ]
-            )
-
-            # -------------------------------------------------
-            # Audit
-            # -------------------------------------------------
             AuditLog.objects.create(
                 actor=request.user,
                 action="member_contributor.approved",
@@ -523,9 +330,6 @@ class MemberContributorApplicationApproveView(APIView):
                 target_id=str(application.id),
             )
 
-        # -----------------------------------------------------
-        # Return updated application
-        # -----------------------------------------------------
         serializer = MemberContributorApplicationSerializer(
             application,
             context={"request": request},
@@ -544,26 +348,10 @@ class MemberContributorApplicationApproveView(APIView):
 
 
 # =========================================================
-# MEMBER & CONTRIBUTOR APPLICATION
-# DOCUMENT VIEW
+# MEMBER AND CONTRIBUTOR APPLICATION DOCUMENTS
 # =========================================================
 
 class MemberContributorApplicationDocumentView(APIView):
-    """
-    Return the stored URL for a private application document
-    after checking that the requester has admin-level access.
-
-    GET:
-        /api/v1/auth/member-contributor-applications/<id>/document/<document_type>/
-
-    Supported document_type values:
-        selfie
-        identity-proof
-        aadhaar
-        pan
-        supporting
-    """
-
     permission_classes = [IsAuthenticated]
 
     DOCUMENT_FIELDS = {
@@ -575,53 +363,21 @@ class MemberContributorApplicationDocumentView(APIView):
     }
 
     def get(self, request, pk, document_type):
-        # -----------------------------------------------------
-        # Check administrator access
-        # -----------------------------------------------------
-        role_name = getattr(
-            getattr(request.user, "role", None),
-            "name",
-            "",
-        )
-
-        allowed_roles = {
-            "admin",
-            "super_admin",
-            "editor",
-            "bureau_chief",
-        }
-
-        if role_name not in allowed_roles:
-            return Response(
-                {
-                    "detail": (
-                        "You do not have permission "
-                        "to view application documents."
-                    )
-                },
-                status=status.HTTP_403_FORBIDDEN,
+        if not has_admin_access(request.user):
+            return admin_access_denied(
+                "You do not have permission to view application documents."
             )
 
-        # -----------------------------------------------------
-        # Validate document type
-        # -----------------------------------------------------
         field_name = self.DOCUMENT_FIELDS.get(
             str(document_type).strip().lower()
         )
 
         if not field_name:
             return Response(
-                {
-                    "detail": (
-                        "Invalid document type."
-                    )
-                },
+                {"detail": "Invalid document type."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # -----------------------------------------------------
-        # Get application
-        # -----------------------------------------------------
         try:
             application = (
                 MemberContributorApplication.objects
@@ -634,181 +390,80 @@ class MemberContributorApplicationDocumentView(APIView):
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # -----------------------------------------------------
-        # Get document
-        # -----------------------------------------------------
-        try:
-            document = getattr(
-                application,
-                field_name,
-                None,
+        document = getattr(application, field_name, None)
+
+        if not document:
+            return Response(
+                {"detail": "This document has not been uploaded."},
+                status=status.HTTP_404_NOT_FOUND,
             )
 
-            if not document:
-                return Response(
-                    {
-                        "detail": (
-                            "This document has not been uploaded."
-                        )
-                    },
-                    status=status.HTTP_404_NOT_FOUND,
-                )
-
-            url = document.url
-
+        try:
             return Response(
                 {
-                    "url": url,
+                    "url": document.url,
                     "document_type": document_type,
-                    "application_id": (
-                        application.application_id
-                    ),
+                    "application_id": application.application_id,
                 },
                 status=status.HTTP_200_OK,
             )
-
         except Exception:
             return Response(
-                {
-                    "detail": (
-                        "Unable to retrieve this document."
-                    )
-                },
+                {"detail": "Unable to retrieve this document."},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR,
             )
 
 
+# =========================================================
+# REJECT MEMBER AND CONTRIBUTOR APPLICATION
+# =========================================================
+
 class MemberContributorApplicationRejectView(APIView):
-    """
-    Reject a pending Member & Contributor application.
-
-    POST:
-        /api/v1/auth/member-contributor-applications/<id>/reject/
-
-    JSON:
-        {
-            "reason": "Documents could not be verified."
-        }
-    """
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request, pk):
-        # -----------------------------------------------------
-        # Check administrator access
-        # -----------------------------------------------------
-
-        role_name = getattr(
-            getattr(
-                request.user,
-                "role",
-                None,
-            ),
-            "name",
-            "",
-        )
-
-        allowed_roles = {
-            "admin",
-            "super_admin",
-            "editor",
-            "bureau_chief",
-        }
-
-        if role_name not in allowed_roles:
-            return Response(
-                {
-                    "detail": (
-                        "You do not have permission "
-                        "to reject applications."
-                    )
-                },
-                status=status.HTTP_403_FORBIDDEN,
+        if not has_admin_access(request.user):
+            return admin_access_denied(
+                "You do not have permission to reject applications."
             )
-
-        # -----------------------------------------------------
-        # Get application
-        # -----------------------------------------------------
 
         try:
             application = (
                 MemberContributorApplication.objects
-                .select_related(
-                    "user",
-                    "user__role",
-                )
+                .select_related("user", "user__role")
                 .get(pk=pk)
             )
-
         except MemberContributorApplication.DoesNotExist:
             return Response(
-                {
-                    "detail": "Application not found."
-                },
+                {"detail": "Application not found."},
                 status=status.HTTP_404_NOT_FOUND,
             )
 
-        # -----------------------------------------------------
-        # Only pending applications
-        # -----------------------------------------------------
-
-        if application.status != (
-            MemberContributorApplication.PENDING
-        ):
+        if application.status != MemberContributorApplication.PENDING:
             return Response(
                 {
                     "detail": (
-                        "Only pending applications "
-                        "can be rejected."
+                        "Only pending applications can be rejected."
                     )
                 },
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # -----------------------------------------------------
-        # Rejection reason
-        # -----------------------------------------------------
-
-        reason = str(
-            request.data.get(
-                "reason",
-                "",
-            )
-        ).strip()
+        reason = str(request.data.get("reason", "")).strip()
 
         if not reason:
             return Response(
-                {
-                    "detail": (
-                        "A rejection reason is required."
-                    )
-                },
+                {"detail": "A rejection reason is required."},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        # -----------------------------------------------------
-        # Atomic rejection
-        # -----------------------------------------------------
-
         with transaction.atomic():
-
-            application.status = (
-                MemberContributorApplication.REJECTED
-            )
-
+            application.status = MemberContributorApplication.REJECTED
             application.approved_role = None
-
             application.rejection_reason = reason
+            application.rejected_by = request.user
+            application.rejected_at = timezone.now()
 
-            application.rejected_by = (
-                request.user
-            )
-
-            application.rejected_at = (
-                timezone.now()
-            )
-
-            # Clear approval information
             application.approved_by = None
             application.approved_at = None
 
@@ -825,39 +480,21 @@ class MemberContributorApplicationRejectView(APIView):
                 ]
             )
 
-            # -------------------------------------------------
-            # Audit
-            # -------------------------------------------------
-
             AuditLog.objects.create(
                 actor=request.user,
                 action="member_contributor.rejected",
-                target_type=(
-                    "MemberContributorApplication"
-                ),
-                target_id=str(
-                    application.id
-                ),
+                target_type="MemberContributorApplication",
+                target_id=str(application.id),
             )
 
-        # -----------------------------------------------------
-        # Return updated application
-        # -----------------------------------------------------
-
-        serializer = (
-            MemberContributorApplicationSerializer(
-                application,
-                context={
-                    "request": request,
-                },
-            )
+        serializer = MemberContributorApplicationSerializer(
+            application,
+            context={"request": request},
         )
 
         return Response(
             {
-                "message": (
-                    "Application rejected successfully."
-                ),
+                "message": "Application rejected successfully.",
                 "application": serializer.data,
             },
             status=status.HTTP_200_OK,
@@ -875,20 +512,14 @@ class RegisterAuthorView(APIView):
         serializer = RegisterAuthorSerializer(
             data=request.data
         )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
+        serializer.is_valid(raise_exception=True)
         user = serializer.save()
 
         AuditLog.objects.create(
             actor=None,
             action="author.registered",
             target_type="User",
-            target_id=str(
-                user.id
-            ),
+            target_id=str(user.id),
         )
 
         return Response(
@@ -899,9 +530,7 @@ class RegisterAuthorView(APIView):
                 ),
                 "user": UserSerializer(
                     user,
-                    context={
-                        "request": request,
-                    },
+                    context={"request": request},
                 ).data,
             },
             status=status.HTTP_201_CREATED,
@@ -919,50 +548,24 @@ class MeView(APIView):
         return Response(
             UserSerializer(
                 request.user,
-                context={
-                    "request": request,
-                },
+                context={"request": request},
             ).data
         )
 
     def patch(self, request):
-        """
-        Self-service profile update.
-
-        Allows:
-        - username
-        - bio
-        - avatar URL
-        - social links
-        - website
-
-        Does NOT allow:
-        - email changes
-        - role changes
-        - account status changes
-        """
-
         serializer = UpdateProfileSerializer(
             request.user,
             data=request.data,
             partial=True,
-            context={
-                "request": request,
-            },
+            context={"request": request},
         )
-
-        serializer.is_valid(
-            raise_exception=True
-        )
-
+        serializer.is_valid(raise_exception=True)
         serializer.save()
 
         return Response(
             UserSerializer(
                 request.user,
-                context={
-                    "request": request,
-                },
+                context={"request": request},
             ).data
         )
 
@@ -972,13 +575,6 @@ class MeView(APIView):
 # =========================================================
 
 class LogoutView(APIView):
-    """
-    Blacklists the refresh token and removes the
-    refresh-token cookie.
-
-    Access tokens are short-lived and are not blacklisted.
-    """
-
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
@@ -990,20 +586,13 @@ class LogoutView(APIView):
 
         if refresh_token:
             try:
-                RefreshToken(
-                    refresh_token
-                ).blacklist()
-
+                RefreshToken(refresh_token).blacklist()
             except Exception:
-                # Token may already be expired,
-                # invalid, or blacklisted.
+                # The token may already be expired, invalid,
+                # or blacklisted.
                 pass
 
-        response = Response(
-            {
-                "message": "Logged out."
-            }
-        )
+        response = Response({"message": "Logged out."})
 
         response.delete_cookie(
             REFRESH_COOKIE_NAME,
