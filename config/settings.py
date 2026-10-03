@@ -54,8 +54,9 @@ INSTALLED_APPS = [
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
-"apps.emagazine",
 
+    # Existing apps
+    "apps.emagazine",
 
     # Third-party
     "rest_framework",
@@ -75,6 +76,7 @@ INSTALLED_APPS = [
     "apps.notifications",
     "apps.analytics",
     "apps.core",
+    "apps.documents",
 ]
 
 
@@ -206,6 +208,7 @@ STATIC_ROOT = BASE_DIR / "staticfiles"
 # ============================================================
 
 # Common R2 S3-compatible connection
+
 R2_ENDPOINT_URL = config(
     "R2_ENDPOINT_URL",
     default="",
@@ -231,6 +234,7 @@ R2_SECRET_ACCESS_KEY = config(
 # - PAN
 # - Identity proof
 # - Supporting documents
+# - Generated official documents
 
 R2_PRIVATE_BUCKET_NAME = config(
     "R2_PRIVATE_BUCKET_NAME",
@@ -271,6 +275,7 @@ STORAGES = {
     "default": {
         "BACKEND": "storages.backends.s3.S3Storage",
     },
+
     "staticfiles": {
         "BACKEND":
             "whitenoise.storage.CompressedManifestStaticFilesStorage",
@@ -286,10 +291,13 @@ AWS_ACCESS_KEY_ID = R2_ACCESS_KEY_ID
 
 AWS_SECRET_ACCESS_KEY = R2_SECRET_ACCESS_KEY
 
+
 # Keep Django's default storage on the PRIVATE bucket.
 #
 # This is important because member identity documents
-# must not automatically become public.
+# and generated official documents must not automatically
+# become public.
+
 AWS_STORAGE_BUCKET_NAME = R2_PRIVATE_BUCKET_NAME
 
 AWS_S3_ENDPOINT_URL = R2_ENDPOINT_URL
@@ -300,8 +308,10 @@ AWS_S3_SIGNATURE_VERSION = "s3v4"
 
 AWS_DEFAULT_ACL = None
 
+
 # Keep the private/default storage bucket private.
 # Django can generate signed URLs when needed.
+
 AWS_QUERYSTRING_AUTH = True
 
 AWS_S3_FILE_OVERWRITE = False
@@ -468,6 +478,31 @@ BUNNY_WEBHOOK_SECRET = config(
 FRONTEND_URL = config(
     "FRONTEND_URL",
     default="http://localhost:3000",
+)
+
+
+# ============================================================
+# DOCUMENT VERIFICATION
+# ============================================================
+#
+# Public URL used by QR codes on:
+# - Membership ID Cards
+# - Contributor Membership Certificates
+#
+# IMPORTANT:
+# The QR code is NOT a constant QR code.
+# Every issued document gets its own document number.
+#
+# Example:
+# http://localhost:3000/verify/WOJ-ID-2026-00001
+#
+# Production:
+# https://warofjustice.news/verify/WOJ-ID-2026-00001
+#
+
+DOCUMENT_VERIFICATION_BASE_URL = config(
+    "DOCUMENT_VERIFICATION_BASE_URL",
+    default=f"{FRONTEND_URL.rstrip('/')}/verify",
 )
 
 
