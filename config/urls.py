@@ -51,6 +51,15 @@ urlpatterns = [
     ),
 
     # =====================================================
+    # DOCUMENTS / MEMBERSHIP / CERTIFICATES
+    # =====================================================
+
+    path(
+        "api/v1/documents/",
+        include("apps.documents.urls"),
+    ),
+
+    # =====================================================
     # PUBLIC APIs
     # Website + future Flutter app
     # =====================================================
