@@ -7,6 +7,7 @@ from django.utils import timezone
 
 from rest_framework import status
 from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.renderers import JSONRenderer
 from rest_framework.response import Response
 from rest_framework.views import APIView
 
@@ -17,6 +18,11 @@ from apps.documents.serializers import (
     PublicDocumentVerificationSerializer,
 )
 from apps.documents.services.pdf import generate_and_store_document_pdf
+
+
+# ============================================================
+# MY DOCUMENTS
+# ============================================================
 
 
 class MyDocumentsView(APIView):
@@ -55,6 +61,11 @@ class MyDocumentsView(APIView):
         )
 
 
+# ============================================================
+# MY DOCUMENT DETAIL
+# ============================================================
+
+
 class MyDocumentDetailView(APIView):
     """
     Return one document belonging to the authenticated user.
@@ -80,6 +91,11 @@ class MyDocumentDetailView(APIView):
             serializer.data,
             status=status.HTTP_200_OK,
         )
+
+
+# ============================================================
+# DOCUMENT DOWNLOAD
+# ============================================================
 
 
 class DocumentDownloadView(APIView):
@@ -184,6 +200,11 @@ class DocumentDownloadView(APIView):
         )
 
 
+# ============================================================
+# PUBLIC DOCUMENT VERIFICATION
+# ============================================================
+
+
 class PublicDocumentVerificationView(APIView):
     """
     Public QR verification endpoint.
@@ -191,11 +212,16 @@ class PublicDocumentVerificationView(APIView):
     No authentication required.
 
     Only safe verification information is returned.
+
+    This endpoint is JSON-only because the frontend
+    verification page will consume this API.
     """
 
     permission_classes = [AllowAny]
 
     authentication_classes = []
+
+    renderer_classes = [JSONRenderer]
 
     def get(self, request, document_number):
         document = (
@@ -262,6 +288,11 @@ class PublicDocumentVerificationView(APIView):
         )
 
 
+# ============================================================
+# ADMIN DOCUMENT DETAIL
+# ============================================================
+
+
 class AdminDocumentDetailView(APIView):
     """
     Authorized document detail endpoint.
@@ -325,6 +356,11 @@ class AdminDocumentDetailView(APIView):
         raise PermissionError(
             "You do not have permission to access documents."
         )
+
+
+# ============================================================
+# ADMIN REGENERATE DOCUMENT
+# ============================================================
 
 
 class AdminRegenerateDocumentView(APIView):
@@ -401,6 +437,11 @@ class AdminRegenerateDocumentView(APIView):
         raise PermissionError(
             "You do not have permission to regenerate documents."
         )
+
+
+# ============================================================
+# ADMIN REVOKE DOCUMENT
+# ============================================================
 
 
 class AdminRevokeDocumentView(APIView):
