@@ -11,6 +11,13 @@ from rest_framework_simplejwt.tokens import RefreshToken
 
 from apps.core.models import AuditLog
 
+from apps.documents.services.membership import (
+    create_or_get_membership,
+)
+from apps.documents.services.issuance import (
+    issue_membership_documents,
+)
+
 from .models import (
     MemberContributorApplication,
     Role,
@@ -321,7 +328,53 @@ class MemberContributorApplicationApproveView(APIView):
             user = application.user
             user.role = target_role
             user.status = User.ACTIVE
-            user.save(update_fields=["role", "status"])
+            user.save(
+                update_fields=[
+                    "role",
+                    "status",
+                ]
+            )
+
+            # =================================================
+            # CREATE / GET OFFICIAL MEMBERSHIP
+            # =================================================
+            #
+            # AUTHOR remains the user's account role.
+            # Membership is the official membership record.
+            #
+            # Contributor applications become CONTRIBUTOR
+            # memberships. All other Member & Contributor
+            # categories become MEMBER memberships.
+            #
+            membership_type = (
+                "contributor"
+                if application.membership_category
+                == MemberContributorApplication.CATEGORY_CONTRIBUTOR
+                else "member"
+            )
+
+            membership = create_or_get_membership(
+                user=user,
+                application=application,
+                membership_type=membership_type,
+                approved_by=request.user,
+                designation="",
+            )
+
+            # =================================================
+            # ISSUE OFFICIAL MEMBERSHIP DOCUMENTS
+            # =================================================
+            #
+            # Every approved membership receives:
+            #   1. Membership ID Card
+            #   2. Membership Certificate
+            #
+            # The existing issuance service prevents duplicate
+            # issued documents for the same membership.
+            documents = issue_membership_documents(
+                membership=membership,
+                issued_by=request.user,
+            )
 
             AuditLog.objects.create(
                 actor=request.user,
