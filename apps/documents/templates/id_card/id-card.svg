@@ -4,136 +4,120 @@
   <defs>
     <style>
       .st0 {
-        font-size: 4.3px;
+        font-size: 9.2px;
+        letter-spacing: 0em;
       }
 
-      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7, .st8, .st9, .st10, .st11, .st12, .st13, .st14, .st15, .st16, .st17, .st18, .st19, .st20, .st21 {
+      .st0, .st1, .st2, .st3, .st4, .st5, .st6, .st7, .st8, .st9, .st10, .st11, .st12, .st13, .st14, .st15, .st16, .st17, .st18, .st19, .st20, .st21, .st22 {
         isolation: isolate;
       }
 
-      .st0, .st4, .st6, .st9, .st10, .st12, .st13, .st14, .st18, .st19 {
-        font-family: ArialMT, Arial;
-      }
-
-      .st0, .st10 {
-        fill: #718392;
-      }
-
-      .st1 {
-        font-size: 6.8px;
-      }
-
-      .st1, .st2, .st3, .st22, .st23, .st8, .st11, .st16, .st17, .st20 {
+      .st0, .st23, .st5, .st24, .st13, .st18, .st20, .st21 {
         fill: #fff;
       }
 
-      .st1, .st2, .st3, .st5, .st8, .st11, .st20, .st21 {
+      .st0, .st5, .st6, .st13, .st16, .st18, .st20, .st21 {
         font-family: Arial-BoldMT, Arial;
         font-weight: 700;
       }
 
-      .st24, .st25, .st26, .st27, .st28, .st29 {
+      .st25 {
+        stroke: #d9e2e8;
+      }
+
+      .st25, .st26, .st27, .st28, .st29, .st30 {
         fill: none;
       }
 
-      .st24, .st25, .st28 {
-        stroke: #fff;
-      }
-
-      .st24, .st23, .st26, .st28, .st29 {
+      .st25, .st24, .st27, .st28, .st30 {
         stroke-miterlimit: 11.3;
       }
 
-      .st24, .st26 {
+      .st25, .st28 {
         stroke-width: 1.3px;
       }
 
-      .st2 {
-        font-size: 7.5px;
-        letter-spacing: .2em;
+      .st1 {
+        fill: #0c567b;
       }
 
-      .st3, .st12, .st13 {
-        font-size: 4.7px;
+      .st1, .st2, .st3, .st4, .st9, .st10, .st11, .st12, .st15, .st19 {
+        font-family: ArialMT, Arial;
       }
 
-      .st4, .st19, .st21 {
+      .st1, .st4, .st16 {
         font-size: 5.7px;
       }
 
-      .st4, .st21 {
-        fill: #152a3c;
+      .st2 {
+        fill: #9edae8;
+        letter-spacing: .4em;
       }
 
-      .st30 {
+      .st2, .st6 {
+        font-size: 4.4px;
+      }
+
+      .st3 {
+        font-size: 4.3px;
+      }
+
+      .st3, .st19 {
+        fill: #718392;
+      }
+
+      .st31 {
         fill: #eaf1f5;
       }
 
+      .st4, .st16 {
+        fill: #152a3c;
+      }
+
       .st5 {
+        font-size: 6.8px;
+      }
+
+      .st32 {
+        fill: #31c48d;
+      }
+
+      .st24 {
+        stroke: #c8d6df;
+      }
+
+      .st24, .st30 {
+        stroke-width: 1.4px;
+      }
+
+      .st6 {
         fill: #6b7d8d;
         letter-spacing: .2em;
       }
 
-      .st5, .st18 {
-        font-size: 4.4px;
-      }
-
-      .st6 {
-        fill: #567080;
-        font-size: 3.8px;
-        letter-spacing: .1em;
-      }
-
-      .st31 {
-        fill: #31c48d;
-      }
-
-      .st25 {
-        stroke-linecap: round;
-        stroke-linejoin: round;
-        stroke-width: 2.4px;
-      }
-
-      .st23 {
-        stroke: #c8d6df;
-      }
-
-      .st23, .st28 {
-        stroke-width: 1.4px;
-      }
-
-      .st26 {
-        stroke: #d9e2e8;
-      }
-
-      .st28 {
-        stroke-opacity: .5;
-      }
-
-      .st29 {
+      .st27 {
         stroke: #79ddf0;
         stroke-width: 2px;
+      }
+
+      .st33 {
+        fill: #8f0000;
+      }
+
+      .st34 {
+        fill: #071a33;
       }
 
       .st7 {
         opacity: .6;
       }
 
-      .st7, .st15 {
-        fill: #f0f7f7;
-      }
-
-      .st32 {
-        fill: #071a33;
-      }
-
-      .st33 {
+      .st7, .st14, .st17, .st22 {
         fill: #b96100;
       }
 
-      .st8 {
-        font-size: 9.2px;
-        letter-spacing: .1em;
+      .st35 {
+        fill: #b96100;
       }
 
       .st9 {
@@ -142,142 +126,214 @@
       }
 
       .st10 {
-        font-size: 3.4px;
-      }
-
-      .st11 {
-        font-size: 7.8px;
-      }
-
-      .st34 {
-        fill: #8f0000;
-      }
-
-      .st12, .st13 {
-        fill: #8eb5c9;
-      }
-
-      .st13 {
-        letter-spacing: .3em;
-      }
-
-      .st14 {
         fill: #8a98a4;
         font-size: 4px;
       }
 
-      .st15 {
-        opacity: .2;
+      .st11, .st12 {
+        fill: #8eb5c9;
       }
 
-      .st35 {
-        fill: #b8cad8;
+      .st11, .st12, .st20 {
+        font-size: 4.7px;
+      }
+
+      .st12 {
+        letter-spacing: .3em;
+      }
+
+      .st28, .st29, .st30 {
+        stroke: #fff;
       }
 
       .st36 {
-        fill: #f7fafc;
-      }
-
-      .st16 {
-        opacity: .1;
+        fill: #b8cad8;
       }
 
       .st37 {
-        fill: #eaf2f7;
+        fill: #f7fafc;
       }
 
-      .st17 {
-        opacity: 0;
-      }
-
-      .st18 {
-        fill: #9edae8;
-        letter-spacing: .4em;
-      }
-
-      .st19 {
-        fill: #0c567b;
-      }
-
-      .st38 {
-        clip-path: url(#clippath);
-      }
-
-      .st20 {
+      .st13 {
         font-size: 11.9px;
       }
 
+      .st38 {
+        fill: #eaf2f7;
+      }
+
+      .st29 {
+        stroke-linecap: round;
+        stroke-linejoin: round;
+        stroke-width: 2.4px;
+      }
+
+      .st14 {
+        opacity: 0;
+      }
+
+      .st15 {
+        fill: #567080;
+        font-size: 3.8px;
+        letter-spacing: 0em;
+      }
+
+      .st17 {
+        opacity: .2;
+      }
+
+      .st18 {
+        font-size: 7.8px;
+      }
+
+      .st30 {
+        stroke-opacity: .5;
+      }
+
+      .st19 {
+        font-size: 3.4px;
+      }
+
       .st39 {
+        clip-path: url(#clippath);
+      }
+
+      .st21 {
+        font-size: 7.5px;
+        letter-spacing: .2em;
+      }
+
+      .st40 {
         fill: #2dbb7f;
+      }
+
+      .st22 {
+        opacity: .1;
       }
     </style>
     <clipPath id="clippath">
-      <rect class="st27" x="5.7" y="8.5" width="242.6" height="153.1" rx="8.5" ry="8.5"/>
+      <rect class="st26" x="5.7" y="8.5" width="242.6" height="153.1" rx="8.5" ry="8.5"/>
     </clipPath>
   </defs>
-  <rect class="st34" x="5.7" y="8.5" width="242.6" height="153.1" rx="8.5" ry="8.5"/>
-  <g class="st38">
+  <rect class="st33" x="5.7" y="8.5" width="242.6" height="153.1" rx="8.5" ry="8.5"/>
+  <g class="st39">
     <g>
       <circle class="st7" cx="235.3" cy="22.7" r="62.4"/>
-      <circle class="st15" cx="212.6" cy="155.9" r="76.5"/>
-      <path class="st17" d="M164.4,8.5h85v90.7c-28.3-15.1-56.7-45.4-85-90.7Z"/>
-      <path class="st16" d="M161.6,161.6c22.7-51,53.9-65.2,96.4-65.2v65.2h-96.4Z"/>
+      <circle class="st17" cx="212.6" cy="155.9" r="76.5"/>
+      <path class="st14" d="M164.4,8.5h85v90.7c-28.3-15.1-56.7-45.4-85-90.7Z"/>
+      <path class="st22" d="M161.6,161.6c22.7-51,53.9-65.2,96.4-65.2v65.2h-96.4Z"/>
     </g>
   </g>
-  <circle class="st29" cx="26.9" cy="28.3" r="11.9"/>
-  <path class="st25" d="M20.4,28.6l5.1,5.1,8.8-9.4"/>
-  <text class="st8" transform="translate(45.4 26.1)"><tspan x="0" y="0">WAR OF JUSTICE</tspan></text>
-  <text class="st18" transform="translate(45.4 34.9)"><tspan x="0" y="0">MEDIA • JUSTICE • HUMANITY</tspan></text>
-  <rect class="st37" x="19.8" y="51" width="53.9" height="70.9" rx="6.2" ry="6.2"/>
-  <circle class="st35" cx="46.8" cy="71.4" r="11.6"/>
-  <path class="st35" d="M29.8,112c11.3-14.2,22.7-14.2,34,0H29.8Z"/>
-  <rect class="st28" x="19.8" y="51" width="53.9" height="70.9" rx="6.2" ry="6.2"/>
-  <text class="st13" transform="translate(85 59)"><tspan x="0" y="0">MEMBERSHIP ID</tspan></text>
-  <text class="st20" transform="translate(85 71.7)"><tspan x="0" y="0">WOJ-2026-00003</tspan></text>
-  <text class="st12" transform="translate(85 85.6)"><tspan x="0" y="0">MEMBER</tspan></text>
-  <text class="st11" transform="translate(85 96.4)"><tspan x="0" y="0">WARRIOR JUSTICE26</tspan></text>
-  <text class="st12" transform="translate(85 110.5)"><tspan x="0" y="0">MEMBERSHIP</tspan></text>
-  <text class="st1" transform="translate(85 120.5)"><tspan x="0" y="0">GOLD ELITE • MONTHLY</tspan></text>
-  <path class="st31" d="M201.3,127.6h21.3c3.9,0,7.1,3.2,7.1,7.1h0c0,3.9-3.2,7.1-7.1,7.1h-21.3c-3.9,0-7.1-3.2-7.1-7.1h0c0-3.9,3.2-7.1,7.1-7.1Z"/>
-  <circle class="st22" cx="202.1" cy="134.6" r="2.8"/>
-  <text class="st3" transform="translate(206.9 137.2)"><tspan x="0" y="0">ACTIVE</tspan></text>
-  <text class="st9" transform="translate(19.8 146)"><tspan x="0" y="0">VALID THROUGH</tspan></text>
-  <text class="st3" transform="translate(58.1 146)"><tspan x="0" y="0">31 DEC 2026</tspan></text>
-  <rect class="st36" x="261.9" y="8.5" width="242.6" height="153.1" rx="8.5" ry="8.5"/>
-  <rect class="st34" x="261.9" y="8.5" width="242.6" height="28.3" rx="8.5" ry="8.5"/>
-  <rect class="st33" x="261.9" y="28.3" width="242.6" height="8.5"/>
-  <text class="st2" transform="translate(275 23.2)"><tspan x="0" y="0">ACCOUNT &amp; CONTACT INFORMATION</tspan></text>
-  <text class="st5" transform="translate(275 52.4)"><tspan x="0" y="0">ACCOUNT CREDENTIALS</tspan></text>
-  <text class="st0" transform="translate(275 63.8)"><tspan x="0" y="0">EMAIL</tspan></text>
-  <text class="st4" transform="translate(309 63.8)"><tspan x="0" y="0">user.warrior26@email.com</tspan></text>
-  <text class="st0" transform="translate(275 77.1)"><tspan x="0" y="0">STATUS</tspan></text>
-  <text class="st21" transform="translate(309 77.1)"><tspan x="0" y="0">Verified</tspan></text>
-  <circle class="st39" cx="358.6" cy="75.3" r="3.7"/>
-  <path class="st24" d="M356.6,75.3l1.6,1.7,2.7-3.1"/>
-  <line class="st26" x1="275" y1="85" x2="491.8" y2="85"/>
-  <text class="st5" transform="translate(275 98.4)"><tspan x="0" y="0">CONTACT INFORMATION</tspan></text>
-  <text class="st0" transform="translate(275 110.5)"><tspan x="0" y="0">SUPPORT</tspan></text>
-  <text class="st19" transform="translate(309 110.5)"><tspan x="0" y="0">support@warofjustice.com</tspan></text>
-  <text class="st0" transform="translate(275 124.2)"><tspan x="0" y="0">PHONE</tspan></text>
-  <text class="st4" transform="translate(309 124.2)"><tspan x="0" y="0">+1 (800) 555-0199</tspan></text>
-  <text class="st0" transform="translate(275 137.5)"><tspan x="0" y="0">BILLING</tspan></text>
-  <text class="st4" transform="translate(309 137.5)"><tspan x="0" y="0">billing@warofjustice.com</tspan></text>
-  <rect class="st23" x="455.8" y="48.8" width="34.9" height="34.9" rx="2.8" ry="2.8"/>
-  <g>
-    <rect class="st32" x="459.2" y="52.2" width="9.4" height="9.4"/>
-    <rect class="st22" x="461.2" y="54.1" width="5.4" height="5.4"/>
-    <rect class="st32" x="477.9" y="52.2" width="9.4" height="9.4"/>
-    <rect class="st22" x="479.9" y="54.1" width="5.4" height="5.4"/>
-    <rect class="st32" x="459.2" y="70.6" width="9.4" height="9.4"/>
-    <rect class="st22" x="461.2" y="72.6" width="5.4" height="5.4"/>
-    <rect class="st32" x="473.4" y="65.5" width="3.7" height="3.7"/>
-    <rect class="st32" x="479.1" y="68" width="3.7" height="3.7"/>
-    <rect class="st32" x="483.9" y="64.1" width="3.7" height="3.7"/>
-    <rect class="st32" x="476.8" y="73.7" width="3.7" height="3.7"/>
+  <circle class="st27" cx="26.9" cy="28.3" r="11.9"/>
+  <path class="st29" d="M20.4,28.6l5.1,5.1,8.8-9.4"/>
+  <g class="st8">
+    <text class="st0" transform="translate(45.4 26.1)"><tspan x="0" y="0">WAR OF JUSTICE</tspan></text>
   </g>
-  <text class="st10" transform="translate(467.2 89.3)"><tspan x="0" y="0">VERIFY</tspan></text>
-  <path class="st30" d="M279.6,145.1h207.5c2.6,0,4.7,2.1,4.7,4.7h0c0,2.6-2.1,4.7-4.7,4.7h-207.5c-2.6,0-4.7-2.1-4.7-4.7h0c0-2.6,2.1-4.7,4.7-4.7Z"/>
-  <text class="st6" transform="translate(297.2 151.5)"><tspan x="0" y="0">PROPERTY OF WAR OF JUSTICE • IF FOUND, PLEASE CONTACT SUPPORT</tspan></text>
-  <text class="st14" transform="translate(5.7 167.8)"><tspan x="0" y="0">FRONT — CR80 85.6 × 54 mm</tspan></text>
-  <text class="st14" transform="translate(261.9 167.8)"><tspan x="0" y="0">BACK — CR80 85.6 × 54 mm</tspan></text>
+  <g class="st8">
+    <text class="st2" transform="translate(45.4 34.9)"><tspan x="0" y="0">MEDIA • JUSTICE • HUMANITY</tspan></text>
+  </g>
+  <rect class="st38" x="19.8" y="51" width="53.9" height="70.9" rx="6.2" ry="6.2"/>
+  <circle class="st36" cx="46.8" cy="71.4" r="11.6"/>
+  <path class="st36" d="M29.8,112c11.3-14.2,22.7-14.2,34,0H29.8Z"/>
+  <rect class="st30" x="19.8" y="51" width="53.9" height="70.9" rx="6.2" ry="6.2"/>
+  <g class="st8">
+    <text class="st12" transform="translate(85 59)"><tspan x="0" y="0">MEMBERSHIP ID</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st13" transform="translate(85 71.7)"><tspan x="0" y="0">WOJ-2026-00003</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st11" transform="translate(85 85.6)"><tspan x="0" y="0">MEMBER</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st18" transform="translate(85 96.4)"><tspan x="0" y="0">WARRIOR JUSTICE26</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st11" transform="translate(85 110.5)"><tspan x="0" y="0">MEMBERSHIP</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st5" transform="translate(85 120.5)"><tspan x="0" y="0">GOLD ELITE • MONTHLY</tspan></text>
+  </g>
+  <path class="st32" d="M201.3,127.6h21.3c3.9,0,7.1,3.2,7.1,7.1h0c0,3.9-3.2,7.1-7.1,7.1h-21.3c-3.9,0-7.1-3.2-7.1-7.1h0c0-3.9,3.2-7.1,7.1-7.1Z"/>
+  <circle class="st23" cx="202.1" cy="134.6" r="2.8"/>
+  <g class="st8">
+    <text class="st20" transform="translate(206.9 137.2)"><tspan x="0" y="0">ACTIVE</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st9" transform="translate(19.8 146)"><tspan x="0" y="0">VALID THROUGH</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st20" transform="translate(58.1 146)"><tspan x="0" y="0">31 DEC 2026</tspan></text>
+  </g>
+  <rect class="st37" x="261.9" y="8.5" width="242.6" height="153.1" rx="8.5" ry="8.5"/>
+  <rect class="st33" x="261.9" y="8.5" width="242.6" height="28.3" rx="8.5" ry="8.5"/>
+  <rect class="st35" x="261.9" y="28.3" width="242.6" height="8.5"/>
+  <g class="st8">
+    <text class="st21" transform="translate(275 23.2)"><tspan x="0" y="0">ACCOUNT &amp; CONTACT INFORMATION</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st6" transform="translate(275 52.4)"><tspan x="0" y="0">ACCOUNT CREDENTIALS</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st3" transform="translate(275 63.8)"><tspan x="0" y="0">EMAIL</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st4" transform="translate(309 63.8)"><tspan x="0" y="0">user.warrior26@email.com</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st3" transform="translate(275 77.1)"><tspan x="0" y="0">STATUS</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st16" transform="translate(309 77.1)"><tspan x="0" y="0">Verified</tspan></text>
+  </g>
+  <circle class="st40" cx="358.6" cy="75.3" r="3.7"/>
+  <path class="st28" d="M356.6,75.3l1.6,1.7,2.7-3.1"/>
+  <line class="st25" x1="275" y1="85" x2="491.8" y2="85"/>
+  <g class="st8">
+    <text class="st6" transform="translate(275 98.4)"><tspan x="0" y="0">CONTACT INFORMATION</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st3" transform="translate(275 110.5)"><tspan x="0" y="0">SUPPORT</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st1" transform="translate(309 110.5)"><tspan x="0" y="0">support@warofjustice.com</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st3" transform="translate(275 124.2)"><tspan x="0" y="0">PHONE</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st4" transform="translate(309 124.2)"><tspan x="0" y="0">+1 (800) 555-0199</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st3" transform="translate(275 137.5)"><tspan x="0" y="0">BILLING</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st4" transform="translate(309 137.5)"><tspan x="0" y="0">billing@warofjustice.com</tspan></text>
+  </g>
+  <rect class="st24" x="455.8" y="48.8" width="34.9" height="34.9" rx="2.8" ry="2.8"/>
+  <g>
+    <rect class="st34" x="459.2" y="52.2" width="9.4" height="9.4"/>
+    <rect class="st23" x="461.2" y="54.1" width="5.4" height="5.4"/>
+    <rect class="st34" x="477.9" y="52.2" width="9.4" height="9.4"/>
+    <rect class="st23" x="479.9" y="54.1" width="5.4" height="5.4"/>
+    <rect class="st34" x="459.2" y="70.6" width="9.4" height="9.4"/>
+    <rect class="st23" x="461.2" y="72.6" width="5.4" height="5.4"/>
+    <rect class="st34" x="473.4" y="65.5" width="3.7" height="3.7"/>
+    <rect class="st34" x="479.1" y="68" width="3.7" height="3.7"/>
+    <rect class="st34" x="483.9" y="64.1" width="3.7" height="3.7"/>
+    <rect class="st34" x="476.8" y="73.7" width="3.7" height="3.7"/>
+  </g>
+  <g class="st8">
+    <text class="st19" transform="translate(467.2 89.3)"><tspan x="0" y="0">VERIFY</tspan></text>
+  </g>
+  <path class="st31" d="M279.6,145.1h207.5c2.6,0,4.7,2.1,4.7,4.7h0c0,2.6-2.1,4.7-4.7,4.7h-207.5c-2.6,0-4.7-2.1-4.7-4.7h0c0-2.6,2.1-4.7,4.7-4.7Z"/>
+  <g class="st8">
+    <text class="st15" transform="translate(297.2 151.5)"><tspan x="0" y="0">PROPERTY OF WAR OF JUSTICE • IF FOUND, PLEASE CONTACT SUPPORT</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st10" transform="translate(5.7 167.8)"><tspan x="0" y="0">FRONT — CR80 85.6 × 54 mm</tspan></text>
+  </g>
+  <g class="st8">
+    <text class="st10" transform="translate(261.9 167.8)"><tspan x="0" y="0">BACK — CR80 85.6 × 54 mm</tspan></text>
+  </g>
 </svg>
