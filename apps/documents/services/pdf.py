@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from io import BytesIO
-
+from reportlab.lib.utils import ImageReader
 import qrcode
 
 from django.core.files.base import ContentFile
@@ -234,21 +234,22 @@ def draw_qr_code(
     Draw the verification QR code.
     """
 
-    qr_buffer = generate_qr_image(
-        document
-    )
+    qr_buffer = generate_qr_image(document)
 
     width, height = A4
 
     qr_size = 100
 
+    # Position of QR code on the page.
+    qr_x = width - 170
+    qr_y = 55
+
     pdf.drawImage(
-        qr_buffer,
-        width - 160,
-        70,
+        ImageReader(qr_buffer),
+        qr_x,
+        qr_y,
         width=qr_size,
         height=qr_size,
-        preserveAspectRatio=True,
         mask="auto",
     )
 
@@ -259,7 +260,7 @@ def draw_qr_code(
 
     pdf.drawString(
         width - 190,
-        55,
+        45,
         "Scan to verify",
     )
 
