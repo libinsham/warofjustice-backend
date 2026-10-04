@@ -38,6 +38,7 @@ ID_CARD_TEMPLATE_SVG = (
     / "apps"
     / "documents"
     / "templates"
+    / "id_card"
     / "id-card.svg"
 )
 
@@ -46,9 +47,9 @@ CERTIFICATE_TEMPLATE_PDF = (
     / "apps"
     / "documents"
     / "templates"
-    / "certificate.pdf"
+    / "certificate"
+    / "publication-approval.pdf"
 )
-
 
 # =============================================================================
 # ID CARD SVG GEOMETRY
