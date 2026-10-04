@@ -2,7 +2,8 @@ from __future__ import annotations
 
 from io import BytesIO
 from pathlib import Path
-import copy
+import html
+import re
 
 import qrcode
 from PIL import Image, ImageOps
@@ -14,9 +15,11 @@ from django.db import transaction
 from pypdf import PdfReader, PdfWriter
 from reportlab.lib import colors
 from reportlab.lib.pagesizes import A4
+from reportlab.graphics import renderPDF
 from reportlab.lib.utils import ImageReader
 from reportlab.pdfgen import canvas
 from reportlab.lib.units import mm
+from svglib.svglib import svg2rlg
 
 from apps.documents.models import Document, DocumentEvent
 from apps.documents.services.qr import build_verification_url
@@ -31,20 +34,19 @@ from apps.documents.services.qr import build_verification_url
 # other artwork exactly as exported from Illustrator.
 #
 # Required files:
-#   apps/documents/templates/id-card-template.pdf
+#   apps/documents/templates/id-card.svg
 #   apps/documents/templates/certificate.pdf
 #
-# The ID-card master should be one 180 x 60 mm page containing both CR80 sides.
-# The certificate master should be your supplied one-page publication approval
-# / certificate artwork.
+# The supplied ID-card SVG is a 180 x 60 mm artboard containing both CR80 sides.
+# The certificate master remains the supplied one-page PDF artwork.
 #
 
-ID_CARD_TEMPLATE_PDF = (
+ID_CARD_TEMPLATE_SVG = (
     Path(settings.BASE_DIR)
     / "apps"
     / "documents"
     / "templates"
-    / "id-card-template.pdf"
+    / "id-card.svg"
 )
 
 CERTIFICATE_TEMPLATE_PDF = (
@@ -57,7 +59,7 @@ CERTIFICATE_TEMPLATE_PDF = (
 
 
 # =============================================================================
-# ID CARD MASTER GEOMETRY
+# ID CARD SVG GEOMETRY
 # =============================================================================
 
 CARD_WIDTH_MM = 85.6
@@ -65,11 +67,11 @@ CARD_HEIGHT_MM = 54.0
 MASTER_WIDTH_MM = 180.0
 MASTER_HEIGHT_MM = 60.0
 
-FRONT_X_MM = 2.0
-FRONT_Y_MM = 3.0
-BACK_X_MM = 92.4
-BACK_Y_MM = 3.0
+FRONT_VIEWBOX = "2 3 85.6 54"
+BACK_VIEWBOX = "92.4 3 85.6 54"
 
+# Dynamic overlay positions are based on the original SVG artboard.
+# Coordinates use the SVG's top-origin coordinate system.
 PHOTO_X_MM = 7.0
 PHOTO_Y_MM = 18.0
 PHOTO_W_MM = 19.0
@@ -80,7 +82,6 @@ QR_Y_MM = 17.2
 QR_W_MM = 12.3
 QR_H_MM = 12.3
 
-# Text baselines from the original SVG artwork.
 ID_X_MM = 30.0
 ID_Y_MM = 25.3
 NAME_X_MM = 30.0
@@ -101,13 +102,23 @@ PHONE_Y_MM = 43.8
 BILLING_X_MM = 109.0
 BILLING_Y_MM = 48.5
 
-# Keep these close to the original SVG typography.
 ID_FONT_SIZE_PT = 4.2 * mm
 NAME_FONT_SIZE_PT = 2.75 * mm
 MEMBERSHIP_FONT_SIZE_PT = 2.4 * mm
 VALID_FONT_SIZE_PT = 1.65 * mm
 BACK_TEXT_FONT_SIZE_PT = 2.0 * mm
 STATUS_FONT_SIZE_PT = 2.0 * mm
+
+# SVG sample text used by the supplied artwork.
+PLACEHOLDER_MEMBER_ID = "WOJ-2026-00003"
+PLACEHOLDER_NAME = "WARRIOR JUSTICE26"
+PLACEHOLDER_MEMBERSHIP = "GOLD ELITE • MONTHLY"
+PLACEHOLDER_VALID_THROUGH = "31 DEC 2026"
+PLACEHOLDER_EMAIL = "user.warrior26@email.com"
+PLACEHOLDER_STATUS = "Verified"
+PLACEHOLDER_SUPPORT_EMAIL = "support@warofjustice.com"
+PLACEHOLDER_PHONE = "+1 (800) 555-0199"
+PLACEHOLDER_BILLING_EMAIL = "billing@warofjustice.com"
 
 # Supplied certificate master page was 1524 x 1032 points.
 CERTIFICATE_PAGE_WIDTH = 1524.0
@@ -377,205 +388,139 @@ def _merge_overlay(
 
 
 # =============================================================================
-# ID CARD RENDERER
+# ID CARD SVG RENDERER
 # =============================================================================
 
 
-def _svg_y_to_pdf(y_from_top_mm: float) -> float:
-    """Convert SVG top-origin Y to ReportLab bottom-origin Y."""
-
-    return (MASTER_HEIGHT_MM - y_from_top_mm) * mm
+def _escape_svg_text(value: str) -> str:
+    return html.escape(str(value), quote=False)
 
 
-def _overlay_id_card_master(document: Document) -> bytes:
-    """Overlay dynamic ID card fields on the 180 x 60 mm master PDF."""
+def _replace_svg_text(svg: str, placeholder: str, value: str) -> str:
+    return svg.replace(placeholder, _escape_svg_text(value))
 
-    master = _read_master(ID_CARD_TEMPLATE_PDF)
-    if not master.pages:
-        raise ValueError("ID-card PDF template has no pages.")
 
-    master_page = master.pages[0]
-    page_width = MASTER_WIDTH_MM * mm
-    page_height = MASTER_HEIGHT_MM * mm
+def _prepare_id_card_svg(document: Document, viewbox: str) -> str:
+    """Load the supplied SVG, replace sample text, and crop to one CR80 side."""
+
+    if not ID_CARD_TEMPLATE_SVG.exists():
+        raise FileNotFoundError(
+            f"ID card SVG template not found: {ID_CARD_TEMPLATE_SVG}"
+        )
+
+    svg = ID_CARD_TEMPLATE_SVG.read_text(encoding="utf-8")
+    membership = document.membership
+    user = membership.user
 
     member_id = get_membership_id(document)
     member_name = get_member_display_name(document)
     membership_label = get_membership_label(document)
-    valid_through = format_card_date(document.membership.expiry_date)
-
-    user = document.membership.user
+    valid_through = format_card_date(membership.expiry_date)
     email = getattr(user, "email", "") or "—"
     phone = get_member_phone(document)
     support_email = get_support_email()
     billing_email = get_billing_email()
-
     status_label = getattr(
-        document.membership,
+        membership,
         "get_status_display",
         lambda: "Active",
     )()
 
-    # ReportLab PDF page has the exact same 180 x 60 mm coordinate system.
-    def draw_overlay(pdf: canvas.Canvas) -> None:
-        # Front side ---------------------------------------------------------
-        pdf.setFillColor(colors.white)
+    replacements = {
+        PLACEHOLDER_MEMBER_ID: member_id,
+        PLACEHOLDER_NAME: member_name,
+        PLACEHOLDER_MEMBERSHIP: membership_label,
+        PLACEHOLDER_VALID_THROUGH: valid_through,
+        PLACEHOLDER_EMAIL: email,
+        PLACEHOLDER_STATUS: str(status_label),
+        PLACEHOLDER_SUPPORT_EMAIL: support_email,
+        PLACEHOLDER_PHONE: phone,
+        PLACEHOLDER_BILLING_EMAIL: billing_email,
+    }
 
-        pdf.setFont("Helvetica-Bold", ID_FONT_SIZE_PT)
-        pdf.drawString(
-            ID_X_MM * mm,
-            _svg_y_to_pdf(ID_Y_MM),
-            member_id,
-        )
+    for placeholder, value in replacements.items():
+        svg = _replace_svg_text(svg, placeholder, value)
 
-        pdf.setFont("Helvetica-Bold", NAME_FONT_SIZE_PT)
-        pdf.drawString(
-            NAME_X_MM * mm,
-            _svg_y_to_pdf(NAME_Y_MM),
-            member_name,
-        )
+    def replace_root(match: re.Match) -> str:
+        attrs = match.group(1)
+        attrs = re.sub(r'\bviewBox="[^"]*"', f'viewBox="{viewbox}"', attrs, count=1)
+        attrs = re.sub(r'\bwidth="[^"]*"', f'width="{CARD_WIDTH_MM}mm"', attrs, count=1)
+        attrs = re.sub(r'\bheight="[^"]*"', f'height="{CARD_HEIGHT_MM}mm"', attrs, count=1)
+        if 'viewBox=' not in attrs:
+            attrs += f' viewBox="{viewbox}"'
+        if 'width=' not in attrs:
+            attrs += f' width="{CARD_WIDTH_MM}mm"'
+        if 'height=' not in attrs:
+            attrs += f' height="{CARD_HEIGHT_MM}mm"'
+        return f'<svg{attrs}>'
 
-        pdf.setFont("Helvetica-Bold", MEMBERSHIP_FONT_SIZE_PT)
-        pdf.drawString(
-            MEMBERSHIP_X_MM * mm,
-            _svg_y_to_pdf(MEMBERSHIP_Y_MM),
-            membership_label,
-        )
+    svg = re.sub(r'<svg([^>]*)>', replace_root, svg, count=1)
+    return svg
 
-        pdf.setFont("Helvetica-Bold", VALID_FONT_SIZE_PT)
-        pdf.drawString(
-            VALID_X_MM * mm,
-            _svg_y_to_pdf(VALID_Y_MM),
-            valid_through,
-        )
 
-        # Back side ----------------------------------------------------------
-        pdf.setFillColor(colors.HexColor("#152A3C"))
-        pdf.setFont("Helvetica", BACK_TEXT_FONT_SIZE_PT)
-        pdf.drawString(
-            EMAIL_X_MM * mm,
-            _svg_y_to_pdf(EMAIL_Y_MM),
-            email,
-        )
+def _render_svg_side(svg_text: str, document: Document) -> bytes:
+    """Render one prepared SVG CR80 side to a PDF page."""
 
-        pdf.setFont("Helvetica-Bold", STATUS_FONT_SIZE_PT)
-        pdf.drawString(
-            STATUS_X_MM * mm,
-            _svg_y_to_pdf(STATUS_Y_MM),
-            str(status_label),
-        )
+    drawing = svg2rlg(BytesIO(svg_text.encode("utf-8")))
+    if drawing is None:
+        raise ValueError("Unable to parse the ID card SVG template.")
 
-        pdf.setFillColor(colors.HexColor("#0C567B"))
-        pdf.setFont("Helvetica", BACK_TEXT_FONT_SIZE_PT)
-        pdf.drawString(
-            SUPPORT_X_MM * mm,
-            _svg_y_to_pdf(SUPPORT_Y_MM),
-            support_email,
-        )
+    page_width = CARD_WIDTH_MM * mm
+    page_height = CARD_HEIGHT_MM * mm
+    output = BytesIO()
+    pdf = canvas.Canvas(output, pagesize=(page_width, page_height))
 
-        pdf.setFillColor(colors.HexColor("#152A3C"))
-        pdf.drawString(
-            PHONE_X_MM * mm,
-            _svg_y_to_pdf(PHONE_Y_MM),
-            phone,
-        )
+    # The SVG artwork itself is the master visual design.
+    renderPDF.draw(drawing, pdf, 0, 0)
 
-        pdf.drawString(
-            BILLING_X_MM * mm,
-            _svg_y_to_pdf(BILLING_Y_MM),
-            billing_email,
-        )
-
-        # Photo overlay ------------------------------------------------------
+    # Dynamic photo overlay.
+    if document.document_type == Document.ID_CARD:
         photo = prepare_member_photo(document)
         if photo:
             photo_x = PHOTO_X_MM * mm
-            photo_y = (MASTER_HEIGHT_MM - PHOTO_Y_MM - PHOTO_H_MM) * mm
-            photo_w = PHOTO_W_MM * mm
-            photo_h = PHOTO_H_MM * mm
-
+            photo_y = (CARD_HEIGHT_MM - PHOTO_Y_MM - PHOTO_H_MM) * mm
             pdf.drawImage(
                 ImageReader(photo),
                 photo_x,
                 photo_y,
-                width=photo_w,
-                height=photo_h,
+                width=PHOTO_W_MM * mm,
+                height=PHOTO_H_MM * mm,
                 preserveAspectRatio=False,
                 mask="auto",
             )
 
-            pdf.setStrokeColor(colors.white)
-            pdf.setLineWidth(0.5 * mm)
-            pdf.roundRect(
-                photo_x,
-                photo_y,
-                photo_w,
-                photo_h,
-                2.2 * mm,
-                stroke=1,
-                fill=0,
-            )
-
-        # QR overlay ---------------------------------------------------------
+    # QR is only drawn on the back side.
+    if '92.4' in svg_text[:1000]:
         qr = generate_qr_image(document)
-        qr_x = QR_X_MM * mm
-        qr_y = (MASTER_HEIGHT_MM - QR_Y_MM - QR_H_MM) * mm
-        qr_w = QR_W_MM * mm
-        qr_h = QR_H_MM * mm
-
+        qr_x = (QR_X_MM - 92.4) * mm
+        qr_y = (CARD_HEIGHT_MM - (QR_Y_MM - 3.0) - QR_H_MM) * mm
         pdf.drawImage(
             ImageReader(qr),
             qr_x,
             qr_y,
-            width=qr_w,
-            height=qr_h,
+            width=QR_W_MM * mm,
+            height=QR_H_MM * mm,
             preserveAspectRatio=False,
             mask="auto",
         )
 
-        pdf.setStrokeColor(colors.HexColor("#C8D6DF"))
-        pdf.setLineWidth(0.35 * mm)
-        pdf.roundRect(
-            qr_x,
-            qr_y,
-            qr_w,
-            qr_h,
-            1 * mm,
-            stroke=1,
-            fill=0,
-        )
+    pdf.showPage()
+    pdf.save()
+    output.seek(0)
+    return output.getvalue()
 
-    overlay = _make_overlay(
-        page_width,
-        page_height,
-        draw_overlay,
-    )
 
-    _merge_overlay(master_page, overlay)
+def render_id_card_pdf(document: Document) -> bytes:
+    """Render the supplied SVG as a two-page CR80 PDF: front then back."""
 
-    # Crop the single master page into two printable CR80 pages.
-    pages = []
-    front = copy.deepcopy(master_page)
-    back = copy.deepcopy(master_page)
-
-    front.mediabox.lower_left = (FRONT_X_MM * mm, FRONT_Y_MM * mm)
-    front.mediabox.upper_right = (
-        (FRONT_X_MM + CARD_WIDTH_MM) * mm,
-        (FRONT_Y_MM + CARD_HEIGHT_MM) * mm,
-    )
-    front.cropbox = front.mediabox
-
-    back.mediabox.lower_left = (BACK_X_MM * mm, BACK_Y_MM * mm)
-    back.mediabox.upper_right = (
-        (BACK_X_MM + CARD_WIDTH_MM) * mm,
-        (BACK_Y_MM + CARD_HEIGHT_MM) * mm,
-    )
-    back.cropbox = back.mediabox
-
-    pages.extend((front, back))
+    front_svg = _prepare_id_card_svg(document, FRONT_VIEWBOX)
+    back_svg = _prepare_id_card_svg(document, BACK_VIEWBOX)
 
     writer = PdfWriter()
-    for page in pages:
-        writer.add_page(page)
+    for svg_text in (front_svg, back_svg):
+        reader = PdfReader(BytesIO(_render_svg_side(svg_text, document)))
+        for page in reader.pages:
+            writer.add_page(page)
 
     output = BytesIO()
     writer.write(output)
