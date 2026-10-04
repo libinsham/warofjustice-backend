@@ -227,29 +227,6 @@
       .st45 {
         stroke: #d19a2d;
       }
-
-      /* Django dynamic document fields */
-      .dynamic-value {
-        fill: #17203a;
-        font-family: ArialMT, Arial, sans-serif;
-        font-size: 15px;
-        font-weight: 400;
-        isolation: isolate;
-      }
-      .dynamic-reference {
-        fill: #17203a;
-        font-family: Arial-BoldMT, Arial, sans-serif;
-        font-size: 17px;
-        font-weight: 700;
-        isolation: isolate;
-      }
-      .dynamic-small {
-        fill: #17203a;
-        font-family: ArialMT, Arial, sans-serif;
-        font-size: 13px;
-        font-weight: 400;
-        isolation: isolate;
-      }
     </style>
     <linearGradient id="linear-gradient" x1="1505.1" y1="960.2" x2="1506.1" y2="959.2" gradientTransform="translate(-2408094 1037035) scale(1600 -1080)" gradientUnits="userSpaceOnUse">
       <stop offset="0" stop-color="#fffaf0"/>
@@ -315,7 +292,6 @@
       <stop offset="1" stop-color="#9b5d08"/>
     </linearGradient>
   </defs>
-  <!-- DJANGO DYNAMIC CERTIFICATE FIELDS: rendered by apps.documents.services.pdf -->
   <rect class="st49" y="0" width="1600" height="1080"/>
   <rect class="st39" x="18" y="18" width="1564" height="1044" rx="4" ry="4"/>
   <rect class="st34" x="31" y="31" width="1538" height="1018" rx="2" ry="2"/>
@@ -346,14 +322,16 @@
   </g>
   <circle class="st6" cx="800" cy="101" r="65"/>
   <circle class="st41" cx="800" cy="101" r="57"/>
-  <image
-    id="certificate-logo"
-    x="728" y="29"
-    width="144" height="144"
-    preserveAspectRatio="xMidYMid meet"
-    href="{{LOGO_DATA_URI}}"
-    xlink:href="{{LOGO_DATA_URI}}"
-  />
+  <g class="st18">
+    <g class="st18">
+      <text class="st24" transform="translate(774.3 96)"><tspan x="0" y="0">LOGO</tspan></text>
+    </g>
+  </g>
+  <g class="st18">
+    <g class="st18">
+      <text class="st14" transform="translate(757.7 118)"><tspan x="0" y="0">INSERT HERE</tspan></text>
+    </g>
+  </g>
   <g class="st18">
     <g class="st18">
       <text class="st27" transform="translate(159.7 214.5)"><tspan x="0" y="0">PUBLICATION APPROVAL LETTER &amp; DECLARATION</tspan></text>
@@ -381,14 +359,12 @@
       </g>
     </g>
     <line class="st35" x1="405" y1="315" x2="740" y2="315"/>
-    <text class="dynamic-reference" x="405" y="311">{{REFERENCE_NO}}</text>
     <g class="st18">
       <g class="st18">
         <text class="st12" transform="translate(1015 314)"><tspan x="0" y="0">DATE:</tspan></text>
       </g>
     </g>
     <line class="st35" x1="1080" y1="315" x2="1405" y2="315"/>
-    <text class="dynamic-value" x="1080" y="311">{{DATE}}</text>
   </g>
   <g>
     <g class="st18">
@@ -397,14 +373,12 @@
       </g>
     </g>
     <line class="st35" x1="305" y1="357" x2="1410" y2="357"/>
-    <text class="dynamic-value" x="305" y="353">{{TO}}</text>
     <g class="st18">
       <g class="st18">
         <text class="st15" transform="translate(190 406)"><tspan x="0" y="0">SUBJECT:</tspan></text>
       </g>
     </g>
     <line class="st35" x1="305" y1="401" x2="1410" y2="401"/>
-    <text class="dynamic-small" x="305" y="397">{{SUBJECT}}</text>
   </g>
   <rect class="st0" x="185" y="427.6" width="1230" height="150" rx="4" ry="4"/>
   <g class="st18">
@@ -452,14 +426,12 @@
       </g>
     </g>
     <line class="st35" x1="400" y1="703" x2="1395" y2="703"/>
-    <text class="dynamic-value" x="400" y="699">{{CONTRIBUTOR_NAME}}</text>
     <g class="st18">
       <g class="st18">
         <text class="st12" transform="translate(195 768)"><tspan x="0" y="0">News Title:</tspan></text>
       </g>
     </g>
     <line class="st35" x1="320" y1="763" x2="1395" y2="763"/>
-    <text class="dynamic-small" x="320" y="759">{{NEWS_TITLE}}</text>
   </g>
   <g>
     <circle class="st42" cx="408.6" cy="848.6" r="56.4"/>
@@ -482,14 +454,21 @@
     </g>
   </g>
   <rect class="st4" x="700" y="792.3" width="190" height="119.7" rx="6" ry="6"/>
-  <image
-    id="certificate-qr"
-    x="742" y="801"
-    width="106" height="106"
-    preserveAspectRatio="xMidYMid meet"
-    href="{{QR_DATA_URI}}"
-    xlink:href="{{QR_DATA_URI}}"
-  />
+  <g class="st18">
+    <g class="st18">
+      <text class="st22" transform="translate(732.1 840)"><tspan x="0" y="0">QR / BARCODE</tspan></text>
+    </g>
+  </g>
+  <g class="st18">
+    <g class="st18">
+      <text class="st23" transform="translate(731 866)"><tspan x="0" y="0">AUTO-GENERATE</tspan></text>
+    </g>
+  </g>
+  <g class="st18">
+    <g class="st18">
+      <text class="st23" transform="translate(744.8 892)"><tspan x="0" y="0">INSERT HERE</tspan></text>
+    </g>
+  </g>
   <g class="st18">
     <g class="st18">
       <text class="st13" transform="translate(724 943)"><tspan x="0" y="0">SCAN &amp; VERIFY</tspan></text>
@@ -502,7 +481,6 @@
       </g>
     </g>
     <line class="st35" x1="1030" y1="875" x2="1400" y2="875"/>
-    <text class="dynamic-value" x="1030" y="855">{{AUTHORIZED_BY}}</text>
     <g class="st18">
       <g class="st18">
         <text class="st20" transform="translate(1132.3345 902)"><tspan x="0" y="0">Signature of Admin</tspan></text>
