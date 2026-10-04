@@ -6,6 +6,7 @@ from io import BytesIO
 
 from pathlib import Path
 
+import base64
 import html
 
 import re
@@ -92,7 +93,7 @@ ID_CARD_TEMPLATE_SVG = (
 
 
 
-CERTIFICATE_TEMPLATE_PDF = (
+CERTIFICATE_TEMPLATE_SVG = (
 
     Path(settings.BASE_DIR)
 
@@ -104,7 +105,23 @@ CERTIFICATE_TEMPLATE_PDF = (
 
     / "certificate"
 
-    / "publication-approval.pdf"
+    / "publication-approval.svg"
+
+)
+
+CERTIFICATE_LOGO_PNG = (
+
+    Path(settings.BASE_DIR)
+
+    / "apps"
+
+    / "documents"
+
+    / "templates"
+
+    / "certificate"
+
+    / "logo.png"
 
 )
 
@@ -244,94 +261,35 @@ PLACEHOLDER_BILLING_EMAIL = "billing@warofjustice.com"
 
 # =============================================================================
 
-# CERTIFICATE MASTER GEOMETRY
+# CERTIFICATE SVG TOKENS
 
 # =============================================================================
 
 
+# These tokens must exist in the certificate SVG. Place each token inside the
+# exact text/image element where the live value should appear.
 
-# Supplied certificate master page is 1524 x 1032 points.
+CERTIFICATE_TOKENS = (
 
-# =============================================================================
+    "{{REFERENCE_NO}}",
 
-# CERTIFICATE DYNAMIC FIELD COORDINATES
+    "{{DATE}}",
 
-# =============================================================================
+    "{{TO}}",
 
+    "{{SUBJECT}}",
 
+    "{{CONTRIBUTOR_NAME}}",
 
-# Master certificate size:
+    "{{NEWS_TITLE}}",
 
-# 1524 x 1032 points
+    "{{AUTHORIZED_BY}}",
 
+    "{{LOGO_DATA_URI}}",
 
+    "{{QR_DATA_URI}}",
 
-# Reference number
-
-CERT_REFERENCE_X = 490.0
-
-CERT_REFERENCE_Y = 705.0
-
-
-
-# Date
-
-CERT_DATE_X = 930.0
-
-CERT_DATE_Y = 705.0
-
-
-
-# To
-
-CERT_TO_X = 390.0
-
-CERT_TO_Y = 650.0
-
-
-
-# Subject
-
-CERT_SUBJECT_X = 390.0
-
-CERT_SUBJECT_Y = 615.0
-
-
-
-# Contributor / Member name
-
-CERT_NAME_X = 455.0
-
-CERT_NAME_Y = 365.0
-
-
-
-# News / publication title
-
-CERT_NEWS_TITLE_X = 455.0
-
-CERT_NEWS_TITLE_Y = 332.0
-
-
-
-# Authorized by
-
-CERT_AUTHORIZED_X = 1030.0
-
-CERT_AUTHORIZED_Y = 285.0
-
-
-
-# Final verification QR (bottom-right verification area)
-
-CERT_QR_X = 1035.0
-
-CERT_QR_Y = 120.0
-
-CERT_QR_SIZE = 70.0
-
-
-
+)
 
 
 # =============================================================================
@@ -1186,21 +1144,77 @@ def render_id_card_pdf(document: Document) -> bytes:
 
 # =============================================================================
 
-# CERTIFICATE RENDERER
+# CERTIFICATE SVG RENDERER
 
 # =============================================================================
 
 
 
+def _svg_data_uri(
+
+    file_path: Path,
+
+    mime_type: str,
+
+) -> str:
+
+    """Return a base64 data URI for an embedded certificate asset."""
 
 
-def _get_certificate_fields(document: Document) -> dict[str, str]:
 
-    """Build dynamic fields for the supplied certificate master artwork."""
+    if not file_path.exists():
+
+        raise FileNotFoundError(
+
+            f"Certificate asset not found: {file_path}"
+
+        )
+
+
+
+    encoded = base64.b64encode(
+
+        file_path.read_bytes()
+
+    ).decode("ascii")
+
+
+
+    return f"data:{mime_type};base64,{encoded}"
+
+
+
+
+def _png_bytes_to_data_uri(
+
+    png_bytes: bytes,
+
+) -> str:
+
+    encoded = base64.b64encode(
+
+        png_bytes
+
+    ).decode("ascii")
+
+
+
+    return f"data:image/png;base64,{encoded}"
+
+
+
+
+def _get_certificate_fields(
+
+    document: Document,
+
+) -> dict[str, str]:
+
+    """Build certificate values from the existing database records."""
+
+
 
     name = get_member_display_name(document)
-
-    designation = get_designation(document)
 
     reference = document.document_number
 
@@ -1302,15 +1316,16 @@ def _get_certificate_fields(document: Document) -> dict[str, str]:
 
         "authorized_by": authorized_by,
 
-        "designation": designation,
-
     }
 
 
 
 
+def get_member_display_name_from_user(
 
-def get_member_display_name_from_user(user) -> str:
+    user,
+
+) -> str:
 
     if hasattr(user, "get_full_name"):
 
@@ -1329,185 +1344,226 @@ def get_member_display_name_from_user(user) -> str:
 
 
 
+def _prepare_certificate_svg(
 
-def render_certificate_pdf(document: Document) -> bytes:
+    document: Document,
 
-    """Preserve the supplied certificate artwork and overlay dynamic data + QR."""
+) -> str:
 
-    master = _read_master(CERTIFICATE_TEMPLATE_PDF)
-
-    if not master.pages:
-
-        raise ValueError("Certificate PDF template has no pages.")
+    """Fill dynamic values into the SVG without PDF overlay coordinates."""
 
 
 
-    page = master.pages[0]
+    if not CERTIFICATE_TEMPLATE_SVG.exists():
+
+        raise FileNotFoundError(
+
+            "Certificate SVG template not found: "
+
+            f"{CERTIFICATE_TEMPLATE_SVG}"
+
+        )
+
+
+
+    svg = CERTIFICATE_TEMPLATE_SVG.read_text(
+
+        encoding="utf-8"
+
+    )
+
+
 
     fields = _get_certificate_fields(document)
 
 
 
-    def draw_overlay(pdf: canvas.Canvas) -> None:
+    qr_buffer = generate_qr_image(document)
 
-        pdf.setFillColor(colors.HexColor("#102B5C"))
+    qr_data_uri = _png_bytes_to_data_uri(
 
-
-
-        pdf.setFont("Helvetica-Bold", 11)
-
-        pdf.drawString(
-
-            CERT_REFERENCE_X,
-
-            CERT_REFERENCE_Y,
-
-            fields["reference"],
-
-        )
-
-
-
-        pdf.drawString(
-
-            CERT_DATE_X,
-
-            CERT_DATE_Y,
-
-            fields["date"],
-
-        )
-
-
-
-        pdf.setFont("Helvetica-Bold", 11)
-
-        pdf.drawString(
-
-            CERT_TO_X,
-
-            CERT_TO_Y,
-
-            fields["to"],
-
-        )
-
-
-
-        pdf.drawString(
-
-            CERT_SUBJECT_X,
-
-            CERT_SUBJECT_Y,
-
-            fields["subject"],
-
-        )
-
-
-
-        pdf.setFont("Helvetica-Bold", 14)
-
-        pdf.drawString(
-
-            CERT_NAME_X,
-
-            CERT_NAME_Y,
-
-            fields["name"],
-
-        )
-
-
-
-        if fields["news_title"]:
-
-            pdf.setFont("Helvetica", 10)
-
-            pdf.drawString(
-
-                CERT_NEWS_TITLE_X,
-
-                CERT_NEWS_TITLE_Y,
-
-                fields["news_title"],
-
-            )
-
-
-
-        pdf.setFont("Helvetica-Bold", 11)
-
-        pdf.drawString(
-
-            CERT_AUTHORIZED_X,
-
-            CERT_AUTHORIZED_Y,
-
-            fields["authorized_by"],
-
-        )
-
-
-
-        qr = generate_qr_image(document)
-
-        pdf.drawImage(
-
-            ImageReader(qr),
-
-            CERT_QR_X,
-
-            CERT_QR_Y,
-
-            width=CERT_QR_SIZE,
-
-            height=CERT_QR_SIZE,
-
-            preserveAspectRatio=False,
-
-            mask="auto",
-
-        )
-
-
-
-    page_width = float(page.mediabox.width)
-
-    page_height = float(page.mediabox.height)
-
-
-
-    overlay = _make_overlay(
-
-        page_width,
-
-        page_height,
-
-        draw_overlay,
+        qr_buffer.getvalue()
 
     )
 
-    _merge_overlay(page, overlay)
+
+
+    logo_data_uri = _svg_data_uri(
+
+        CERTIFICATE_LOGO_PNG,
+
+        "image/png",
+
+    )
 
 
 
-    writer = PdfWriter()
+    replacements = {
 
-    writer.add_page(page)
+        "{{REFERENCE_NO}}": fields["reference"],
+
+        "{{DATE}}": fields["date"],
+
+        "{{TO}}": fields["to"],
+
+        "{{SUBJECT}}": fields["subject"],
+
+        "{{CONTRIBUTOR_NAME}}": fields["name"],
+
+        "{{NEWS_TITLE}}": fields["news_title"],
+
+        "{{AUTHORIZED_BY}}": fields["authorized_by"],
+
+        "{{LOGO_DATA_URI}}": logo_data_uri,
+
+        "{{QR_DATA_URI}}": qr_data_uri,
+
+    }
+
+
+
+    for token, value in replacements.items():
+
+        svg = svg.replace(
+
+            token,
+
+            html.escape(
+
+                value,
+
+                quote=False,
+
+            ),
+
+        )
+
+
+
+    unresolved = [
+
+        token
+
+        for token in CERTIFICATE_TOKENS
+
+        if token in svg
+
+    ]
+
+
+
+    if unresolved:
+
+        raise ValueError(
+
+            "Certificate SVG contains unresolved tokens: "
+
+            + ", ".join(unresolved)
+
+        )
+
+
+
+    return svg
+
+
+
+
+def render_certificate_pdf(
+
+    document: Document,
+
+) -> bytes:
+
+    """Render the certificate SVG directly to a one-page PDF."""
+
+
+
+    svg_text = _prepare_certificate_svg(document)
+
+
+
+    drawing = svg2rlg(
+
+        BytesIO(svg_text.encode("utf-8"))
+
+    )
+
+
+
+    if drawing is None:
+
+        raise ValueError(
+
+            "Unable to parse the certificate SVG template."
+
+        )
+
+
+
+    width = float(
+
+        getattr(drawing, "width", 0) or 0
+
+    )
+
+    height = float(
+
+        getattr(drawing, "height", 0) or 0
+
+    )
+
+
+
+    if width <= 0 or height <= 0:
+
+        raise ValueError(
+
+            "Certificate SVG returned an invalid size: "
+
+            f"{width} x {height}"
+
+        )
 
 
 
     output = BytesIO()
 
-    writer.write(output)
+
+
+    pdf = canvas.Canvas(
+
+        output,
+
+        pagesize=(width, height),
+
+    )
+
+
+
+    renderPDF.draw(
+
+        drawing,
+
+        pdf,
+
+        0,
+
+        0,
+
+    )
+
+
+
+    pdf.showPage()
+
+    pdf.save()
+
+
 
     output.seek(0)
 
     return output.getvalue()
-
-
-
 
 
 # =============================================================================
