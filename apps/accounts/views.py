@@ -125,6 +125,10 @@ class RegisterReaderView(APIView):
 # SUBSCRIBER REGISTRATION
 # =========================================================
 
+# =========================================================
+# SUBSCRIBER REGISTRATION
+# =========================================================
+
 class SubscriberRegisterView(APIView):
     permission_classes = [AllowAny]
 
@@ -135,12 +139,19 @@ class SubscriberRegisterView(APIView):
             data=request.data
         )
         serializer.is_valid(raise_exception=True)
+
         user = serializer.save()
 
         access_data, refresh_token = issue_tokens(user)
 
         response = Response(
             {
+                "message": (
+                    "Subscriber registration successful."
+                ),
+                "subscriber_id": (
+                    user.subscriber_application.application_id
+                ),
                 "user": UserSerializer(
                     user,
                     context={"request": request},
@@ -150,7 +161,11 @@ class SubscriberRegisterView(APIView):
             status=status.HTTP_201_CREATED,
         )
 
-        _set_refresh_cookie(response, refresh_token)
+        _set_refresh_cookie(
+            response,
+            refresh_token,
+        )
+
         return response
 
 
